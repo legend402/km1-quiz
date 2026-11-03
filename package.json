@@ -1,0 +1,38 @@
+{
+  "name": "km1-quiz",
+  "displayName": "科目一刷题",
+  "description": "驾照科目一理论考试刷题：顺序练习、随机练习、模拟考试、错题本、收藏夹，侧边栏随时刷题。",
+  "version": "0.1.0",
+  "publisher": "local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "km1Quiz",
+          "title": "科目一刷题",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "km1Quiz": [
+        {
+          "type": "webview",
+          "id": "km1Quiz.view",
+          "name": "科目一刷题"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "verify": "node scripts/verify-bank.js"
+  }
+}

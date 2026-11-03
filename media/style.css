@@ -1,0 +1,322 @@
+/* 科目一刷题 — webview 样式（跟随 VSCode 深浅主题，全用 CSS 变量） */
+
+:root {
+    --ok: var(--vscode-testing-iconPassed, #3fb950);
+    --bad: var(--vscode-testing-iconFailed, #f85149);
+    --warn: var(--vscode-editorWarning-foreground, #cca700);
+    --accent: var(--vscode-buttonBackground, #0e639c);
+    --accent-fg: var(--vscode-buttonForeground, #ffffff);
+    --border: var(--vscode-panelBorder, rgba(128, 128, 128, 0.25));
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 10px;
+    color: var(--vscode-foreground);
+    background-color: var(--vscode-sideBar-background, transparent);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size, 13px);
+    line-height: 1.55;
+}
+
+#app { max-width: 640px; }
+
+.loading, .empty {
+    text-align: center;
+    padding: 36px 8px;
+    color: var(--vscode-descriptionForeground);
+}
+.empty-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--vscode-foreground); }
+.empty-desc { margin-bottom: 16px; }
+.empty .btn { margin: 4px; }
+
+/* ---------- 首页 ---------- */
+.stat-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    background: var(--vscode-editorWidget-background, rgba(128, 128, 128, 0.06));
+}
+.stat-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+
+.progress {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(128, 128, 128, 0.25);
+    overflow: hidden;
+}
+.progress-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.2s ease;
+}
+
+.stat-grid { display: flex; gap: 10px; margin-bottom: 10px; }
+.stat-item {
+    flex: 1;
+    text-align: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+}
+.stat-num { font-size: 18px; font-weight: 700; }
+.stat-label { font-size: 11px; color: var(--vscode-descriptionForeground); }
+
+.stat-line { margin: 2px 2px 12px; color: var(--vscode-descriptionForeground); }
+
+.menu { display: flex; flex-direction: column; gap: 8px; }
+.menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--vscode-buttonSecondaryBackground, rgba(128, 128, 128, 0.1));
+    color: var(--vscode-buttonSecondaryForeground, var(--vscode-foreground));
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    font-size: inherit;
+}
+.menu-btn:hover { background: var(--vscode-buttonSecondaryHoverBackground, rgba(128, 128, 128, 0.18)); }
+.menu-icon { font-size: 20px; }
+.menu-text { display: flex; flex-direction: column; }
+.menu-name { font-weight: 600; }
+.menu-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 7px;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--bad);
+}
+.menu-desc { font-size: 11px; color: var(--vscode-descriptionForeground); }
+
+.footnote {
+    margin-top: 14px;
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+    text-align: center;
+}
+
+/* ---------- 顶栏 / 进度 ---------- */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.topbar-title { font-weight: 600; }
+
+.icon-btn {
+    border: none;
+    background: none;
+    color: var(--vscode-foreground);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.icon-btn:hover { background: rgba(128, 128, 128, 0.2); }
+.icon-btn.starred { color: var(--warn); }
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+}
+.badge {
+    padding: 1px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 11px;
+}
+
+/* ---------- 题目 ---------- */
+.qimage {
+    display: block;
+    max-width: 100%;
+    max-height: 190px;
+    margin: 8px auto;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+.qimage-fallback {
+    margin: 8px auto;
+    padding: 12px;
+    text-align: center;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+}
+
+.qtext { font-size: 14px; font-weight: 500; margin: 10px 0; white-space: pre-wrap; }
+
+.options { display: flex; flex-direction: column; gap: 7px; margin: 10px 0; }
+.option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--vscode-inputBackground, rgba(128, 128, 128, 0.08));
+    color: var(--vscode-inputForeground, var(--vscode-foreground));
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    font-size: inherit;
+}
+.option:hover:not(:disabled) { border-color: var(--vscode-focusBorder); }
+.option:disabled { cursor: default; opacity: 1; }
+.option-label {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+}
+.option-text { flex: 1; }
+.option-tag { font-weight: 700; }
+
+.option.correct { border-color: var(--ok); background: rgba(63, 185, 80, 0.12); }
+.option.correct .option-label { border-color: var(--ok); color: var(--ok); }
+.option.wrong { border-color: var(--bad); background: rgba(248, 81, 73, 0.12); }
+.option.wrong .option-label { border-color: var(--bad); color: var(--bad); }
+.option.picked { border-color: var(--accent); background: rgba(14, 99, 156, 0.15); }
+.option.picked .option-label { border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
+.option.dim { opacity: 0.6; }
+
+/* ---------- 解析 ---------- */
+.explain {
+    border-left: 3px solid var(--vscode-focusBorder);
+    padding: 6px 10px;
+    margin: 10px 0;
+    background: rgba(128, 128, 128, 0.07);
+    border-radius: 0 6px 6px 0;
+}
+.explain-head { font-weight: 600; margin-bottom: 2px; }
+.explain-body { font-size: 12px; }
+.explain-law {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.ok { color: var(--ok); }
+.bad { color: var(--bad); }
+.dim { color: var(--vscode-descriptionForeground); }
+
+/* ---------- 按钮 ---------- */
+.btn {
+    border: none;
+    border-radius: 5px;
+    padding: 7px 14px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+}
+.btn:hover:not(:disabled) { background: var(--vscode-buttonHoverBackground, var(--accent)); }
+.btn.secondary {
+    background: var(--vscode-buttonSecondaryBackground, rgba(128, 128, 128, 0.12));
+    color: var(--vscode-buttonSecondaryForeground, var(--vscode-foreground));
+}
+.btn.secondary:hover:not(:disabled) { background: var(--vscode-buttonSecondaryHoverBackground, rgba(128, 128, 128, 0.2)); }
+.btn.danger { background: var(--bad); color: #fff; }
+.btn.small { padding: 3px 10px; font-size: 12px; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+
+.navbar { display: flex; justify-content: space-between; gap: 8px; margin: 12px 0; }
+.navbar .btn { flex: 1; }
+
+/* ---------- 考试 ---------- */
+.timer {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    padding: 1px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+}
+.timer.warn { color: var(--bad); border-color: var(--bad); }
+
+.confirm-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--warn);
+    border-radius: 6px;
+    margin: 8px 0;
+    font-size: 12px;
+}
+
+.sheet-title {
+    margin: 14px 0 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--vscode-descriptionForeground);
+}
+.sheet-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.sheet-cell {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    font-size: 11px;
+    font-family: inherit;
+}
+.sheet-cell.done { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.sheet-cell.current { outline: 2px solid var(--vscode-focusBorder); outline-offset: 1px; }
+
+/* ---------- 成绩 ---------- */
+.result { text-align: center; }
+.score-hero { padding: 18px 0 8px; }
+.score-num { font-size: 56px; font-weight: 800; line-height: 1.1; }
+.score-sub { color: var(--vscode-descriptionForeground); }
+.result-meta {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin: 8px 0 4px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.review-list { text-align: left; display: flex; flex-direction: column; gap: 10px; }
+.review-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+.review-q { font-weight: 600; margin-bottom: 4px; }
+.review-line { font-size: 12px; }
+.review-explain {
+    margin-top: 4px;
+    font-size: 12px;
+    padding: 4px 8px;
+    background: rgba(128, 128, 128, 0.08);
+    border-radius: 4px;
+}
