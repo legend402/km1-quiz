@@ -34,12 +34,18 @@
         return { answers: {}, wrong: [], starred: [], sequentialIndex: 0, examHistory: [] };
     }
 
-    /** 合并默认值并做类型防御，兼容旧版本状态 */
+    /** 合并默认值并做类型防御；自动清掉题库更换后失效的旧题目记录 */
     function normalizeState(s) {
         const d = defaultState();
         if (!s || typeof s !== 'object') { return d; }
+        const answers = {};
+        if (s.answers && typeof s.answers === 'object') {
+            for (const id of Object.keys(s.answers)) {
+                if (isValidId(id)) { answers[id] = s.answers[id]; }
+            }
+        }
         return {
-            answers: (s.answers && typeof s.answers === 'object') ? s.answers : d.answers,
+            answers: answers,
             wrong: Array.isArray(s.wrong) ? s.wrong.filter(isValidId) : [],
             starred: Array.isArray(s.starred) ? s.starred.filter(isValidId) : [],
             sequentialIndex: Number.isInteger(s.sequentialIndex) && s.sequentialIndex >= 0 ? s.sequentialIndex : 0,
@@ -309,7 +315,7 @@
             '</div>' +
             '<div class="stat-line">最近模拟：' + lastExamHtml + '</div>' +
             '<div class="menu">' + menu + '</div>' +
-            '<div class="footnote">题库 2115 题 · 2022-07 快照 · 键盘：1-4 选项，← → 切题</div>' +
+            '<div class="footnote">题库 ' + questions.length + ' 题 · 2026-07 更新 · 键盘：1-4 选项，← → 切题</div>' +
         '</div>';
     }
 

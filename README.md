@@ -41,10 +41,11 @@ code --extensionDevelopmentPath <本项目路径>
 
 ## 题库
 
-- 来源：开源项目 [AgentMystia/driving-test-subject1](https://github.com/AgentMystia/driving-test-subject1) 的 `data/bank.json`（2115 题，判断 1073 / 单选 1042，含解析），其上游 [doupoa/DrivingTestSubjectOne](https://github.com/doupoa/DrivingTestSubjectOne) 为 MIT 许可的 2022-07 题库快照
-- 题库为社区整理快照，**未包含 2025 年新增考点**，答案以官方最新法规为准，仅供学习备考参考
-- 约 1/3 题目带图，图片从 CDN 在线加载，离线时显示占位提示（题干文字仍可作答）
-- 题库文件为 `data/bank.json`，字段：`id / type(judge|single) / question / image / options / answer(索引) / explain / law`。如需更换题库，保持此格式替换该文件即可
+- 来源：开源项目 [xfhxly/KeMuONEXueKao](https://github.com/xfhxly/KeMuONEXueKao)（2026-07 从驾考宝典导入，符合公安部 162 号令记分规则），经 `scripts/upgrade-bank.js` 转换为本科目一插件格式
+- 共 **1757 题**（判断 914 / 单选 843，已过滤真实考试不考的多选题），解析覆盖率 100%，71% 附法规原文；新增"💡 速记"口诀
+- **981 张题目图片已本地化**（`data/images/`，约 39MB），完全离线可用，不依赖任何 CDN
+- 题库由社区从公开渠道整理，归原权利人所有，仅供学习备考参考，答案以官方最新法规为准
+- 题库文件为 `data/bank.json`，字段：`id / type(judge|single) / question / image(相对路径) / options / answer(索引) / explain / law / category`。更换题库：`node scripts/upgrade-bank.js <KeMuONEXueKao 仓库路径>` 或按此格式替换该文件
 
 ## 校验题库
 
@@ -56,10 +57,11 @@ npm run verify    # 等价于 node scripts/verify-bank.js
 
 ```
 km1-quiz/
-├── src/extension.js        # 扩展入口：注册侧边栏 webview、下发题库、持久化状态
-├── media/main.js           # webview 应用（练习/考试/错题/收藏逻辑，原生 JS）
-├── media/style.css         # webview 样式（VSCode CSS 变量主题适配）
-├── media/icon.svg          # 活动栏图标
-├── data/bank.json          # 题库（唯一数据源）
-└── scripts/verify-bank.js  # 题库完整性校验脚本
+├── src/extension.js          # 扩展入口：注册侧边栏 webview、下发题库、持久化状态
+├── media/main.js             # webview 应用（练习/考试/错题/收藏逻辑，原生 JS）
+├── media/style.css           # webview 样式（VSCode CSS 变量主题适配）
+├── media/icon.svg            # 活动栏图标
+├── data/bank.json            # 题库（唯一数据源）
+├── data/images/              # 题目图片（本地化，离线可用）
+└── scripts/                  # verify-bank 校验 / upgrade-bank 升级 / test-webview 测试
 ```

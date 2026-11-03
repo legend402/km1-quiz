@@ -23,12 +23,23 @@ function loadBank(extensionPath) {
         id: q.id,
         type: q.type,            // 'judge' 判断题 | 'single' 单选题
         question: q.question,
-        image: q.image || null,  // 图片 CDN 地址或 null
+        image: q.image || null,  // 本地相对路径（questions/xxx.jpg）或 null
         options: q.options,
         answer: q.answer,        // 正确选项索引
         explain: q.explain || '',
         law: q.law || ''
     }));
+}
+
+/** 把题库中的相对图片路径转换为 webview 可访问的本地 URI */
+function bankForWebview(webview, extensionUri, bank) {
+    return bank.map((q) => {
+        if (!q.image) { return q; }
+        const uri = webview.asWebviewUri(
+            vscode.Uri.joinPath(extensionUri, 'data', 'images', q.image)
+        );
+        return { ...q, image: uri.toString() };
+    });
 }
 
 /** 生成 webview HTML 壳（nonce + CSP，只允许本地资源与 https 图片） */
@@ -38,7 +49,7 @@ function buildHtml(webview, extensionUri) {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'main.js'));
     const csp = [
         "default-src 'none'",
-        'img-src https: http: data:', // 题库图片 CDN 为 http 地址
+        `img-src ${webview.cspSource} https: http: data:`, // 本地图片 + 兼容外链题库
         `style-src ${webview.cspSource}`,
         `script-src 'nonce-${nonce}'`,
         `font-src ${webview.cspSource}`
@@ -68,7 +79,10 @@ function activate(context) {
         resolveWebviewView(view) {
             view.webview.options = {
                 enableScripts: true,
-                localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
+                localResourceRoots: [
+                    vscode.Uri.joinPath(context.extensionUri, 'media'),
+                    vscode.Uri.joinPath(context.extensionUri, 'data', 'images')
+                ]
             };
             view.webview.html = buildHtml(view.webview, context.extensionUri);
 
@@ -76,7 +90,7 @@ function activate(context) {
                 if (msg.type === 'ready') {
                     view.webview.postMessage({
                         type: 'init',
-                        questions,
+                        questions: bankForWebview(view.webview, context.extensionUri, questions),
                         state: context.globalState.get(STATE_KEY) || null
                     });
                 } else if (msg.type === 'saveState') {

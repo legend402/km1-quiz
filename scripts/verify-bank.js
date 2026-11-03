@@ -34,7 +34,11 @@ bank.forEach((q, i) => {
         errors.push(`${at}: answer 索引越界 (${q.answer})`);
     }
     if (q.type !== 'judge' && q.type !== 'single') { errors.push(`${at}: 未知题型 ${q.type}`); }
-    if (q.image && typeof q.image === 'string' && /^https?:\/\//.test(q.image)) { withImage++; }
+    if (q.image && typeof q.image === 'string') {
+        withImage++;
+        const img = path.join(path.dirname(file), 'images', q.image);
+        if (!fs.existsSync(img)) { errors.push(`${at}: 图片文件不存在 ${q.image}`); }
+    }
     if (q.explain) { withExplain++; }
     if (q.law) { withLaw++; }
     typeCount[q.type] = (typeCount[q.type] || 0) + 1;
