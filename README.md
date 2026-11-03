@@ -26,9 +26,12 @@
 ### 方式二：打包安装（日常使用）
 
 ```bash
-npx @vscode/vsce package        # 生成 km1-quiz-0.1.0.vsix
+npx @vscode/vsce package --no-dependencies --allow-missing-repository
+# 生成 km1-quiz-0.1.0.vsix
 code --install-extension km1-quiz-0.1.0.vsix
 ```
+
+> 本扩展零 npm 依赖，`--no-dependencies` 可跳过依赖检测（某些 npm 源环境下 vsce 默认依赖检测会静默失败导致打包清单为空）。
 
 或直接用开发模式运行：
 
