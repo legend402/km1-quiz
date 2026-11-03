@@ -86,7 +86,8 @@ body {
     font-size: inherit;
 }
 .menu-btn:hover { background: var(--vscode-buttonSecondaryHoverBackground, rgba(128, 128, 128, 0.18)); }
-.menu-icon { font-size: 20px; }
+.menu-icon { display: flex; align-items: center; }
+.menu-icon svg { width: 20px; height: 20px; display: block; }
 .menu-text { display: flex; flex-direction: column; }
 .menu-name { font-weight: 600; }
 .menu-badge {
@@ -116,16 +117,19 @@ body {
     margin-bottom: 8px;
 }
 .topbar-title { font-weight: 600; }
+.topbar-title svg { width: 14px; height: 14px; vertical-align: -2px; }
 
 .icon-btn {
     border: none;
     background: none;
     color: var(--vscode-foreground);
-    font-size: 16px;
     cursor: pointer;
     padding: 2px 6px;
     border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
 }
+.icon-btn svg { width: 16px; height: 16px; display: block; }
 .icon-btn:hover { background: rgba(128, 128, 128, 0.2); }
 .icon-btn.starred { color: var(--warn); }
 

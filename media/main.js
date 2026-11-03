@@ -22,6 +22,23 @@
         starred: '收藏夹'
     };
 
+    /** 单色线条图标（跟随主题前景色） */
+    const SVG_ATTR = 'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"';
+    const ICONS = {
+        // 列表（按顺序）
+        sequential: '<svg viewBox="0 0 16 16" ' + SVG_ATTR + '><circle cx="3" cy="3.5" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12.5" r="1"/><path d="M6.5 3.5H13M6.5 8H13M6.5 12.5H13"/></svg>',
+        // 骰子（随机）
+        random: '<svg viewBox="0 0 16 16" ' + SVG_ATTR + '><rect x="2" y="2" width="12" height="12" rx="2.5"/><circle cx="5.5" cy="5.5" r=".9" fill="currentColor" stroke="none"/><circle cx="10.5" cy="5.5" r=".9" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r=".9" fill="currentColor" stroke="none"/><circle cx="5.5" cy="10.5" r=".9" fill="currentColor" stroke="none"/><circle cx="10.5" cy="10.5" r=".9" fill="currentColor" stroke="none"/></svg>',
+        // 试卷对勾（模拟考试）
+        exam: '<svg viewBox="0 0 16 16" ' + SVG_ATTR + '><path d="M3.5 1.5h6L12.5 4.5V14.5h-9z"/><path d="M9.5 1.5v3h3"/><path d="M6 8.5l1.5 1.5 3-3"/></svg>',
+        // 圆圈叉（错题）
+        wrong: '<svg viewBox="0 0 16 16" ' + SVG_ATTR + '><circle cx="8" cy="8" r="6"/><path d="M6 6l4 4M10 6l-4 4"/></svg>',
+        // 星（收藏）
+        star: '<svg viewBox="0 0 16 16" ' + SVG_ATTR + '><path d="M8 2l1.8 3.7 4 .6-2.9 2.8.7 4L8 11.2l-3.6 1.9.7-4L2.2 6.3l4-.6z"/></svg>',
+        // 实心星（已收藏）
+        starFilled: '<svg viewBox="0 0 16 16" ' + SVG_ATTR + ' fill="currentColor"><path d="M8 2l1.8 3.7 4 .6-2.9 2.8.7 4L8 11.2l-3.6 1.9.7-4L2.2 6.3l4-.6z"/></svg>'
+    };
+
     // ---------- 全局状态 ----------
     let questions = [];            // 全量题库 [{id,type,question,image,options,answer,explain,law}]
     let byId = new Map();
@@ -283,11 +300,11 @@
             ? state.examHistory[state.examHistory.length - 1] : null;
 
         const menu = [
-            { mode: 'sequential', icon: '📖', name: '顺序练习', desc: '按顺序过一遍全库' },
-            { mode: 'random', icon: '🎲', name: '随机练习', desc: '随机打乱刷题' },
-            { mode: 'exam', icon: '📝', name: '模拟考试', desc: EXAM_TOTAL + '题 / ' + EXAM_MINUTES + '分钟 / ' + PASS_SCORE + '分及格' },
-            { mode: 'wrong', icon: '❌', name: '错题重练', desc: '答对自动移出错题本', badge: state.wrong.length },
-            { mode: 'starred', icon: '⭐', name: '收藏夹', desc: '练习中点击☆收藏', badge: state.starred.length }
+            { mode: 'sequential', icon: ICONS.sequential, name: '顺序练习', desc: '按顺序过一遍全库' },
+            { mode: 'random', icon: ICONS.random, name: '随机练习', desc: '随机打乱刷题' },
+            { mode: 'exam', icon: ICONS.exam, name: '模拟考试', desc: EXAM_TOTAL + '题 / ' + EXAM_MINUTES + '分钟 / ' + PASS_SCORE + '分及格' },
+            { mode: 'wrong', icon: ICONS.wrong, name: '错题重练', desc: '答对自动移出错题本', badge: state.wrong.length },
+            { mode: 'starred', icon: ICONS.star, name: '收藏夹', desc: '练习中点击星标收藏', badge: state.starred.length }
         ].map((m) => {
             const badge = m.badge
                 ? '<span class="menu-badge">' + m.badge + '</span>' : '';
@@ -321,8 +338,8 @@
 
     function renderEmpty() {
         const texts = {
-            wrong: ['错题本是空的 🎉', '练习或模拟考试中答错的题会自动收进来'],
-            starred: ['还没有收藏题目', '练习时点击顶部 ☆ 即可收藏'],
+            wrong: ['错题本是空的', '练习或模拟考试中答错的题会自动收进来'],
+            starred: ['还没有收藏题目', '练习时点击顶部星标即可收藏'],
             exam: ['题库不足', '题库题目数量不足以组成模拟卷']
         };
         const t = texts[view.mode] || texts.wrong;
@@ -336,10 +353,10 @@
     /** 当前练习题（错题重练中 index 可能越界 = 队列已清空） */
     function renderPractice() {
         if (session.index >= session.queue.length) {
-            let done = '本组题目已完成 🎉';
+            let done = '本组题目已完成';
             if (session.mode === 'wrong') {
                 done = state.wrong.length === 0
-                    ? '错题本已清空 🎉'
+                    ? '错题本已清空'
                     : '本轮重练完成，还剩 ' + state.wrong.length + ' 道错题';
             }
             return '<div class="empty">' +
@@ -395,8 +412,10 @@
                 '<span class="topbar-title">' + MODE_NAMES[session.mode] + modeTag + '</span>' +
                 '<span>' +
                     '<button class="icon-btn' + (starredNow ? ' starred' : '') + '" data-action="toggleStar" title="收藏">' +
-                        (starredNow ? '★' : '☆') + '</button> ' +
-                    '<button class="icon-btn" data-action="exit" title="退出">✕</button>' +
+                        (starredNow ? ICONS.starFilled : ICONS.star) + '</button>' +
+                    '<button class="icon-btn" data-action="exit" title="退出">' +
+                        '<svg viewBox="0 0 16 16" ' + SVG_ATTR + '><path d="M4 4l8 8M12 4l-8 8"/></svg>' +
+                    '</button>' +
                 '</span>' +
             '</div>' +
             '<div class="progress-info">' +
@@ -451,7 +470,7 @@
 
         return '<div class="exam">' +
             '<div class="topbar">' +
-                '<span class="topbar-title">📝 模拟考试</span>' +
+                '<span class="topbar-title">' + ICONS.exam + ' 模拟考试</span>' +
                 '<span>' +
                     '<span class="timer' + (remain <= 300 ? ' warn' : '') + '" id="examTime">' + fmtTime(remain) + '</span> ' +
                     '<button class="btn small" data-action="submit">交卷</button>' +
@@ -492,7 +511,7 @@
         return '<div class="result">' +
             '<div class="score-hero">' +
                 '<div class="score-num ' + (passed ? 'ok' : 'bad') + '">' + r.score + '</div>' +
-                '<div class="score-sub">' + (passed ? '🎉 恭喜及格' : '未及格，继续加油') + '（及格线 ' + PASS_SCORE + '分）</div>' +
+                '<div class="score-sub">' + (passed ? '恭喜及格' : '未及格，继续加油') + '（及格线 ' + PASS_SCORE + '分）</div>' +
             '</div>' +
             '<div class="result-meta">' +
                 '<span>对 ' + r.score + ' 错 ' + (r.total - r.score) + '</span>' +
@@ -511,7 +530,7 @@
         if (img && img.tagName === 'IMG' && img.classList.contains('qimage')) {
             const tip = document.createElement('div');
             tip.className = 'qimage-fallback';
-            tip.textContent = '⚠ 图片加载失败（图片题需联网）';
+            tip.textContent = '图片加载失败';
             img.replaceWith(tip);
         }
     }, true);

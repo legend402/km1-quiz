@@ -41,7 +41,7 @@ const bank = ke1.map((q) => {
     // 速记口诀追加到解析尾部（不与解析重复时）
     const mnemonic = (q.mnemonic || '').trim();
     if (mnemonic && !explain.includes(mnemonic)) {
-        explain += '\n💡 速记：' + mnemonic;
+        explain += '\n【速记】' + mnemonic;
     }
 
     // 图片本地化
