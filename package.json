@@ -3,8 +3,16 @@
   "displayName": "科目一刷题",
   "description": "驾照科目一理论考试刷题：顺序练习、随机练习、模拟考试、错题本、收藏夹，侧边栏随时刷题。",
   "version": "0.1.0",
-  "publisher": "local",
+  "publisher": "legend402",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/legend402/km1-quiz.git"
+  },
+  "bugs": {
+    "url": "https://github.com/legend402/km1-quiz/issues"
+  },
+  "homepage": "https://github.com/legend402/km1-quiz#readme",
   "engines": {
     "vscode": "^1.75.0"
   },
