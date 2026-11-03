@@ -38,7 +38,7 @@ function buildHtml(webview, extensionUri) {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'main.js'));
     const csp = [
         "default-src 'none'",
-        'img-src https: data:',
+        'img-src https: http: data:', // 题库图片 CDN 为 http 地址
         `style-src ${webview.cspSource}`,
         `script-src 'nonce-${nonce}'`,
         `font-src ${webview.cspSource}`
@@ -49,6 +49,7 @@ function buildHtml(webview, extensionUri) {
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="${styleUri}">
 <title>科目一刷题</title>
