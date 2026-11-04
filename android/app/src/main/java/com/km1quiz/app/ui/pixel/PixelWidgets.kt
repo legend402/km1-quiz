@@ -357,7 +357,8 @@ fun PixelDialog(
 ) {
     val appear = remember { Animatable(0.6f) }
     LaunchedEffect(Unit) {
-        appear.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 380f))
+        // 高刚度弹性：保留砸下的弹跳感，但 ~300ms 内收敛，避免动画期间缩放未稳导致首拍落空
+        appear.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 1200f))
     }
     Box(
         Modifier

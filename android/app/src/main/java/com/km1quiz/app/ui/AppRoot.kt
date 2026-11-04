@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.km1quiz.app.ui.screens.EmptyScreen
@@ -65,6 +66,19 @@ fun AppRoot(vm: QuizViewModel) {
             window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
         onDispose { window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+    }
+
+    // 窗口装饰（状态栏/导航栏）颜色跟随风格
+    androidx.compose.runtime.LaunchedEffect(px) {
+        val window = (context as? android.app.Activity)?.window ?: return@LaunchedEffect
+        val darkBg = com.km1quiz.app.ui.theme.PxStyles.isDarkPx(px)
+        @Suppress("DEPRECATION")
+        window.statusBarColor = px.bg.toArgb()
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = px.bg.toArgb()
+        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        controller.isAppearanceLightStatusBars = !darkBg
+        controller.isAppearanceLightNavigationBars = !darkBg
     }
 
     Box(

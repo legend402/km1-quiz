@@ -84,10 +84,11 @@ val LocalPx = staticCompositionLocalOf { PxDark }
 
 @Composable
 fun PixelTheme(
+    styleId: String = PxStyles.DEFAULT_ID,
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val px = if (darkTheme) PxDark else PxLight
+    val px = PxStyles.resolve(styleId, darkTheme)
     val scheme = androidx.compose.material3.darkColorScheme(
         primary = px.accent,
         onPrimary = px.accentFg,

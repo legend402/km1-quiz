@@ -89,6 +89,15 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
     var soundEnabled by mutableStateOf(true)
         private set
 
+    /** 界面风格（PxStyles.STYLES 之一），切换即时生效并持久化 */
+    var styleId by mutableStateOf("classic")
+        private set
+
+    fun setStyle(id: String) {
+        styleId = id
+        prefs.styleId = id
+    }
+
     /** 考试倒计时驱动（每秒更新，UI 据此刷新剩余时间） */
     var examNowMs by mutableStateOf(0L)
         private set
@@ -99,6 +108,7 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         soundEnabled = prefs.soundEnabled
+        styleId = prefs.styleId
         viewModelScope.launch {
             val bank = withContext(Dispatchers.IO) { runCatching { Bank.load(app) }.getOrDefault(emptyList()) }
             val eng = QuizEngine(bank, prefs.loadState())

@@ -26,9 +26,14 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_SOUND, true)
         set(v) { sp.edit().putBoolean(KEY_SOUND, v).apply() }
 
+    var styleId: String
+        get() = sp.getString(KEY_STYLE, null) ?: "classic"
+        set(v) { sp.edit().putString(KEY_STYLE, v).apply() }
+
     companion object {
         private const val KEY_STATE = "state"
         private const val KEY_SOUND = "soundEnabled"
+        private const val KEY_STYLE = "styleId"
     }
 }
 

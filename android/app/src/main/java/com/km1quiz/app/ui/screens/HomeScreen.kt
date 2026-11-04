@@ -6,6 +6,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -25,6 +27,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -42,6 +47,7 @@ import com.km1quiz.app.ui.pixel.PixelButton
 import com.km1quiz.app.ui.pixel.PixelCard
 import com.km1quiz.app.ui.pixel.PixelCarDrive
 import com.km1quiz.app.ui.pixel.PixelChip
+import com.km1quiz.app.ui.pixel.PixelDialog
 import com.km1quiz.app.ui.pixel.PixelDivider
 import com.km1quiz.app.ui.pixel.PixelIcon
 import com.km1quiz.app.ui.pixel.PixelQuads
@@ -59,13 +65,15 @@ fun HomeScreen(vm: QuizViewModel) {
     val px = LocalPx.current
     val h = vm.homeUi
     val percent = if (h.total > 0) h.answered * 100 / h.total else 0
+    var showStylePicker by remember { mutableStateOf(false) }
 
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-    ) {
+    Box(Modifier.fillMaxWidth()) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
         // ---------- 头部 ----------
         Row(
             Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -77,6 +85,11 @@ fun HomeScreen(vm: QuizViewModel) {
                 Text("科目一刷题", style = MaterialTheme.typography.headlineMedium)
                 Text("驾照理论 · 像素修炼场", style = MaterialTheme.typography.labelMedium, color = px.textDim)
             }
+            // 风格切换（2x2 四色块图标）
+            PixelButton(px = px, onClick = { showStylePicker = true }, bg = px.surfaceAlt) {
+                StyleQuads(Modifier.padding(9.dp).size(22.dp, 22.dp))
+            }
+            Spacer(Modifier.width(8.dp))
             PixelButton(px = px, onClick = { vm.toggleSound() }, bg = px.surfaceAlt) {
                 PixelIcon(
                     if (vm.soundEnabled) Glyphs.speakerOn else Glyphs.speakerOff,
@@ -201,6 +214,70 @@ fun HomeScreen(vm: QuizViewModel) {
             headlightColor = Color(0xFFFFF3B0),
             modifier = Modifier.fillMaxWidth().height(64.dp).padding(bottom = 14.dp)
         )
+        }
+
+        // ---------- 风格选择弹窗（点击即时预览，点空白关闭） ----------
+        if (showStylePicker) {
+            PixelDialog(
+                px = px,
+                onDismiss = { showStylePicker = false },
+                title = "界面风格"
+            ) {
+                Text("点击即时换装，点空白处关闭", style = MaterialTheme.typography.labelMedium, color = px.textDim)
+                Spacer(Modifier.height(10.dp))
+                com.km1quiz.app.ui.theme.PxStyles.STYLES.forEach { meta ->
+                    StyleRow(
+                        meta = meta,
+                        current = vm.styleId == meta.id,
+                        onPick = { vm.setStyle(meta.id) }
+                    )
+                    Spacer(Modifier.height(6.dp))
+                }
+            }
+        }
+    }
+}
+
+/** 风格行：名称 + 五色色板条 + 当前标记，点击即时切换 */
+@Composable
+private fun StyleRow(meta: com.km1quiz.app.ui.theme.StyleMeta, current: Boolean, onPick: () -> Unit) {
+    val px = LocalPx.current
+    val sample = com.km1quiz.app.ui.theme.PxStyles.resolve(meta.id, systemDark = false)
+    PixelButton(
+        px = px,
+        onClick = onPick,
+        modifier = Modifier.fillMaxWidth(),
+        bg = if (current) px.accent.copy(alpha = 0.16f) else px.surface
+    ) {
+        Text(
+            meta.name,
+            style = MaterialTheme.typography.titleMedium,
+            color = px.text,
+            modifier = Modifier.weight(1f).padding(vertical = 8.dp)
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            listOf(sample.accent, sample.ok, sample.cyan, sample.warn, sample.bad).forEach { c ->
+                Box(Modifier.size(16.dp).background(c).border(1.dp, px.border))
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        if (current) {
+            PixelChip("当前", px, px.accent)
+        }
+    }
+}
+
+/** 2x2 四色块小图标（风格切换入口） */
+@Composable
+private fun StyleQuads(modifier: Modifier = Modifier) {
+    val px = LocalPx.current
+    androidx.compose.foundation.Canvas(modifier) {
+        val s = size.width / 3f
+        val g = size.width / 6f
+        drawRect(px.accent, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Size(s, s))
+        drawRect(px.ok, androidx.compose.ui.geometry.Offset(s + g, 0f), androidx.compose.ui.geometry.Size(s, s))
+        drawRect(px.bad, androidx.compose.ui.geometry.Offset(0f, s + g), androidx.compose.ui.geometry.Size(s, s))
+        drawRect(px.cyan, androidx.compose.ui.geometry.Offset(s + g, s + g), androidx.compose.ui.geometry.Size(s, s))
     }
 }
 
