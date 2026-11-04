@@ -3,7 +3,6 @@ package com.km1quiz.app.ui.screens
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -30,19 +30,27 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.km1quiz.app.data.Question
 import com.km1quiz.app.logic.QuizEngine
 import com.km1quiz.app.ui.QuizViewModel
 import com.km1quiz.app.ui.ResultUi
 import com.km1quiz.app.ui.fmtTime
 import com.km1quiz.app.ui.pixel.CountUpText
-import com.km1quiz.app.ui.pixel.PixelButton
+import com.km1quiz.app.ui.pixel.Glyphs
 import com.km1quiz.app.ui.pixel.PixelCard
+import com.km1quiz.app.ui.pixel.PixelChip
 import com.km1quiz.app.ui.pixel.PixelConfetti
+import com.km1quiz.app.ui.pixel.PixelDivider
+import com.km1quiz.app.ui.pixel.PixelIcon
 import com.km1quiz.app.ui.pixel.PixelTextButton
+import com.km1quiz.app.ui.pixel.SectionTitle
 import com.km1quiz.app.ui.pixel.StaggerIn
 import com.km1quiz.app.ui.theme.LocalPx
 
-/** 成绩页：分数累加 + 及格撒纸屑/盖章 + 错题回顾 */
+/**
+ * 成绩页 v2
+ * Hero 卡片（分数+印章并置不遮挡）→ 数据 chips → 主操作上移首屏 → 错题回顾（扁平彩边卡）
+ */
 @Composable
 fun ResultScreen(vm: QuizViewModel, ui: ResultUi) {
     val px = LocalPx.current
@@ -53,79 +61,82 @@ fun ResultScreen(vm: QuizViewModel, ui: ResultUi) {
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 14.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(14.dp))
 
-            // 分数 + 印章
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        CountUpText(
-                            target = ui.score,
-                            style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
-                            color = if (passed) px.ok else px.bad,
-                            durationMs = 1100
-                        )
+            // ---------- Hero 成绩卡 ----------
+            PixelCard(px = px, elevated = true, contentPadding = 16.dp) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            CountUpText(
+                                target = ui.score,
+                                style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
+                                color = if (passed) px.ok else px.bad,
+                                durationMs = 1100
+                            )
+                            Text(
+                                " 分",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = px.textDim,
+                                modifier = Modifier.padding(start = 6.dp, bottom = 10.dp)
+                            )
+                        }
                         Text(
-                            " 分",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = px.textDim,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            if (passed) "恭喜及格" else "未及格，继续加油",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = px.textDim
                         )
                     }
-                    Text(
-                        if (passed) "恭喜及格" else "未及格，继续加油",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = px.textDim
-                    )
+                    PassStamp(passed = passed)
                 }
-                PassStamp(passed = passed)
+                Spacer(Modifier.height(14.dp))
+                PixelDivider(px)
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    PixelChip("对 ${ui.score}", px, px.ok)
+                    PixelChip("错 ${ui.total - ui.score}", px, px.bad)
+                    PixelChip("用时 ${fmtTime(ui.durationSec)}", px, px.cyan)
+                    PixelChip("及格 ${QuizEngine.PASS_SCORE}", px, px.textDim)
+                }
             }
 
-            Spacer(Modifier.height(10.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("及格线 ${QuizEngine.PASS_SCORE} 分", style = MaterialTheme.typography.labelMedium, color = px.textDim)
-                Spacer(Modifier.size(14.dp, 6.dp))
-                Text(
-                    "对 ${ui.score} 错 ${ui.total - ui.score}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = px.textDim
-                )
-                Spacer(Modifier.size(14.dp, 6.dp))
-                Text("用时 ${fmtTime(ui.durationSec)}", style = MaterialTheme.typography.labelMedium, color = px.textDim)
-            }
+            // ---------- 主操作（首屏可达） ----------
+            Spacer(Modifier.height(14.dp))
+            PixelTextButton(
+                "返回首页", px, { vm.exitToHome() },
+                bg = px.surfaceAlt, fg = px.text,
+                modifier = Modifier.fillMaxWidth()
+            )
 
+            // ---------- 错题回顾 ----------
             Spacer(Modifier.height(16.dp))
             if (ui.wrongList.isEmpty()) {
                 PixelCard(px = px) {
-                    Text("✓ 全对，太强了！", style = MaterialTheme.typography.titleMedium, color = px.ok)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        PixelIcon(Glyphs.check, px.ok, Modifier.size(26.dp, 26.dp), scale = 2.2.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Text("全对，太强了！", style = MaterialTheme.typography.titleMedium, color = px.ok)
+                    }
                 }
             } else {
-                Text(
-                    "错题回顾（已自动加入错题本）",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = px.textDim
-                )
-                Spacer(Modifier.height(8.dp))
+                SectionTitle("错题回顾 · 已自动加入错题本", px, px.bad)
+                Spacer(Modifier.height(10.dp))
                 ui.wrongList.forEachIndexed { i, w ->
                     StaggerIn(i.coerceAtMost(8)) {
-                        ReviewItem(index = i, questionText = w.q.question, yourPick = w.picked, q = w.q)
+                        ReviewItem(yourPick = w.picked, q = w.q)
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
                 }
             }
-
-            Spacer(Modifier.height(14.dp))
-            PixelTextButton("返回首页", px, { vm.exitToHome() }, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(24.dp))
         }
 
-        // 及格：像素五彩纸屑（覆盖层，不挡点击）
+        // 及格：像素五彩纸屑
         if (passed) {
             PixelConfetti(
                 colors = listOf(px.accent, px.ok, px.cyan, px.bad, Color(0xFFB98CF5)),
@@ -135,61 +146,67 @@ fun ResultScreen(vm: QuizViewModel, ui: ResultUi) {
     }
 }
 
-/** PASS / RETRY 印章：弹簧缩放砸下 + 轻微旋转 */
+/** PASS / RETRY 印章：弹簧砸下，立于分数右侧（不遮挡数字） */
 @Composable
 private fun PassStamp(passed: Boolean) {
     val px = LocalPx.current
-    val appear = remember { Animatable(2.6f) }
+    val appear = remember { Animatable(2.4f) }
     LaunchedEffect(passed) {
-        appear.snapTo(2.6f)
+        appear.snapTo(2.4f)
         appear.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 260f))
     }
     Box(
         Modifier
-            .rotate(-11f)
+            .rotate(-10f)
             .scale(appear.value)
-            .background(Color.Transparent)
-            .border(5.dp, if (passed) px.ok else px.bad)
-            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .border(4.dp, if (passed) px.ok else px.bad)
+            .padding(horizontal = 10.dp, vertical = 2.dp)
     ) {
         Text(
             if (passed) "PASS" else "RETRY",
-            style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
             color = if (passed) px.ok else px.bad
         )
     }
 }
 
+/** 错题卡 v2：扁平卡，答案行只给标签上色（避免"红字写正确"的语义打架） */
 @Composable
-private fun ReviewItem(index: Int, questionText: String, yourPick: Int, q: com.km1quiz.app.data.Question) {
+private fun ReviewItem(yourPick: Int, q: Question) {
     val px = LocalPx.current
     val labels = listOf("A", "B", "C", "D")
-    PixelCard(px = px, shadow = 3.dp) {
+    val yourText = if (yourPick >= 0) {
+        "${labels.getOrElse(yourPick) { "?" }} ${q.options.getOrNull(yourPick) ?: ""}"
+    } else {
+        "未作答"
+    }
+    val rightText = "${labels.getOrElse(q.answer) { "?" }} ${q.options.getOrNull(q.answer) ?: ""}"
+
+    PixelCard(px = px, contentPadding = 12.dp) {
         Row(verticalAlignment = Alignment.Top) {
-            Text("✗", style = MaterialTheme.typography.titleMedium, color = px.bad)
-            Spacer(Modifier.size(8.dp, 0.dp))
-            Text(questionText, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            PixelIcon(Glyphs.close, px.bad, Modifier.size(20.dp, 20.dp), scale = 1.6.dp)
+            Spacer(Modifier.width(8.dp))
+            Text(q.question, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "你的答案：${if (yourPick >= 0) "${labels.getOrElse(yourPick) { "?" }} ${q.options.getOrNull(yourPick) ?: ""}" else "未作答"}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = px.bad
-        )
-        Text(
-            "正确答案：${labels.getOrElse(q.answer) { "?" }} ${q.options.getOrNull(q.answer) ?: ""}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = px.ok
-        )
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("你的答案", style = MaterialTheme.typography.labelMedium, color = px.bad)
+            Spacer(Modifier.width(8.dp))
+            Text(yourText, style = MaterialTheme.typography.bodyMedium, color = px.text)
+        }
+        Spacer(Modifier.height(2.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("正确答案", style = MaterialTheme.typography.labelMedium, color = px.ok)
+            Spacer(Modifier.width(8.dp))
+            Text(rightText, style = MaterialTheme.typography.bodyMedium, color = px.text)
+        }
         if (q.explain.isNotBlank()) {
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 q.explain,
                 style = MaterialTheme.typography.labelMedium,
                 color = px.textDim,
-                modifier = Modifier
-                    .background(px.surfaceAlt)
-                    .padding(6.dp)
+                modifier = Modifier.background(px.surfaceAlt).padding(8.dp)
             )
         }
     }

@@ -1,11 +1,21 @@
 package com.km1quiz.app.ui.screens
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -14,177 +24,281 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.km1quiz.app.logic.PracticeMode
 import com.km1quiz.app.logic.QuizEngine
 import com.km1quiz.app.ui.QuizViewModel
-import com.km1quiz.app.ui.pixel.Glyphs
 import com.km1quiz.app.ui.pixel.CountUpText
+import com.km1quiz.app.ui.pixel.Glyphs
+import com.km1quiz.app.ui.pixel.PixelBadge
 import com.km1quiz.app.ui.pixel.PixelBlockBar
 import com.km1quiz.app.ui.pixel.PixelButton
-import com.km1quiz.app.ui.pixel.PixelCarDrive
 import com.km1quiz.app.ui.pixel.PixelCard
+import com.km1quiz.app.ui.pixel.PixelCarDrive
+import com.km1quiz.app.ui.pixel.PixelChip
+import com.km1quiz.app.ui.pixel.PixelDivider
 import com.km1quiz.app.ui.pixel.PixelIcon
+import com.km1quiz.app.ui.pixel.PixelQuads
+import com.km1quiz.app.ui.pixel.SectionTitle
 import com.km1quiz.app.ui.pixel.StaggerIn
 import com.km1quiz.app.ui.theme.LocalPx
+import kotlin.math.roundToInt
 
-/** 首页：统计 + 五个入口 + 行驶的像素小汽车 */
+/**
+ * 首页 v2：移动端原生结构
+ * 头部 → 闯关进度 Hero（车在轨道上前进）→ 三格统计 → 2x2 模式宫格 → 模拟考试大 CTA
+ */
 @Composable
 fun HomeScreen(vm: QuizViewModel) {
     val px = LocalPx.current
     val h = vm.homeUi
+    val percent = if (h.total > 0) h.answered * 100 / h.total else 0
 
     Column(
         Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp)
+            .padding(horizontal = 16.dp)
     ) {
+        // ---------- 头部 ----------
         Row(
-            Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp),
+            Modifier.fillMaxWidth().padding(top = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            PixelIcon(Glyphs.paperCheck, px.accent, Modifier.size(26.dp, 26.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("科目一刷题", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.weight(1f))
-            PixelButton(px = px, onClick = { vm.toggleSound() }, shadow = 3.dp) {
+            PixelIcon(Glyphs.paperCheck, px.accent, Modifier.size(30.dp, 30.dp))
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("科目一刷题", style = MaterialTheme.typography.headlineMedium)
+                Text("驾照理论 · 像素修炼场", style = MaterialTheme.typography.labelMedium, color = px.textDim)
+            }
+            PixelButton(px = px, onClick = { vm.toggleSound() }, bg = px.surfaceAlt) {
                 PixelIcon(
                     if (vm.soundEnabled) Glyphs.speakerOn else Glyphs.speakerOff,
-                    if (vm.soundEnabled) px.text else px.textDim,
-                    Modifier.padding(5.dp).size(24.dp, 24.dp)
+                    if (vm.soundEnabled) px.accent else px.textDim,
+                    Modifier.padding(8.dp).size(22.dp, 22.dp)
                 )
             }
         }
+        Spacer(Modifier.height(12.dp))
+        PixelDivider(px)
 
-        // 学习进度
+        // ---------- 闯关进度 Hero ----------
+        Spacer(Modifier.height(16.dp))
         StaggerIn(0) {
-            PixelCard(px = px) {
+            PixelCard(px = px, elevated = true, contentPadding = 16.dp) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    SectionTitle("闯关进度", px)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        CountUpText(
+                            percent,
+                            style = MaterialTheme.typography.headlineMedium,
+                            suffix = "%",
+                            color = px.accent
+                        )
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                ProgressRoad(progress = if (h.total > 0) h.answered.toFloat() / h.total else 0f)
+                Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("学习进度", style = MaterialTheme.typography.titleMedium)
+                    Text("已刷 ${h.answered} / ${h.total} 题", style = MaterialTheme.typography.labelMedium, color = px.textDim)
+                    Text("正确率 ${h.accuracy}%", style = MaterialTheme.typography.labelMedium, color = px.ok)
+                }
+            }
+        }
+
+        // ---------- 三格统计 ----------
+        Spacer(Modifier.height(12.dp))
+        StaggerIn(1) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatChip("错题", h.wrongCount, px.bad, Modifier.weight(1f))
+                StatChip("收藏", h.starredCount, px.warn, Modifier.weight(1f))
+                StatChip("模拟", h.lastExam?.score ?: -1, px.cyan, Modifier.weight(1f))
+            }
+        }
+
+        // ---------- 2x2 模式宫格 ----------
+        Spacer(Modifier.height(12.dp))
+        StaggerIn(2) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ModeCard(Glyphs.list, px.cyan, "顺序练习", 0) { vm.startPractice(PracticeMode.SEQUENTIAL) }
+                ModeCard(Glyphs.dice, px.accent, "随机练习", 0) { vm.startPractice(PracticeMode.RANDOM) }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        StaggerIn(3) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ModeCard(Glyphs.xCircle, px.bad, "错题重练", h.wrongCount) { vm.startPractice(PracticeMode.WRONG) }
+                ModeCard(Glyphs.star, px.warn, "收藏夹", h.starredCount) { vm.startPractice(PracticeMode.STARRED) }
+            }
+        }
+
+        // ---------- 模拟考试大 CTA ----------
+        Spacer(Modifier.height(12.dp))
+        StaggerIn(4) {
+            PixelButton(
+                px = px,
+                onClick = { vm.startExam() },
+                modifier = Modifier.fillMaxWidth(),
+                elevated = true
+            ) {
+                PixelIcon(Glyphs.paperCheck, px.accentFg, Modifier.size(26.dp, 26.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
+                    Text("模拟考试", style = MaterialTheme.typography.titleMedium, color = px.accentFg)
                     Text(
-                        "${h.answered} / ${h.total}",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = px.accent
+                        "100 题 · 45 分钟 · 90 分及格",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = px.accentFg.copy(alpha = 0.8f)
                     )
                 }
-                Spacer(Modifier.height(8.dp))
-                PixelBlockBar(
-                    progress = if (h.total > 0) h.answered.toFloat() / h.total else 0f,
-                    px = px,
-                    modifier = Modifier.fillMaxWidth(),
-                    blocks = 16
-                )
+                PixelIcon(Glyphs.arrowRight, px.accentFg, Modifier.size(22.dp, 22.dp))
             }
         }
 
-        // 三格统计
-        StaggerIn(1) {
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatCell("正确率", h.accuracy, "%", px.ok, Modifier.weight(1f))
-                StatCell("错题", h.wrongCount, "", px.bad, Modifier.weight(1f))
-                StatCell("收藏", h.starredCount, "", px.warn, Modifier.weight(1f))
-            }
-        }
-
-        // 最近模拟
-        StaggerIn(2) {
-            Row(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        // ---------- 最近模拟 ----------
+        Spacer(Modifier.height(14.dp))
+        StaggerIn(5) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                PixelQuads(px.cyan, Modifier.size(10.dp, 10.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("最近模拟", style = MaterialTheme.typography.labelMedium, color = px.textDim)
+                Spacer(Modifier.weight(1f))
                 val last = h.lastExam
-                Text("最近模拟：", style = MaterialTheme.typography.bodyMedium, color = px.textDim)
                 if (last == null) {
-                    Text("未测试", style = MaterialTheme.typography.bodyMedium, color = px.textDim)
+                    Text("未测试", style = MaterialTheme.typography.labelMedium, color = px.textDim)
                 } else {
                     val passed = last.score >= QuizEngine.PASS_SCORE
-                    Text(
+                    PixelChip(
                         "${last.score}分 ${if (passed) "及格" else "不及格"}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (passed) px.ok else px.bad
+                        px,
+                        if (passed) px.ok else px.bad
                     )
                 }
             }
         }
-
-        // 五个入口（模拟考试主色突出，其余次级色）
-        MenuEntry(3, Glyphs.list, px.cyan, "顺序练习", "按顺序过一遍全库", 0) { vm.startPractice(PracticeMode.SEQUENTIAL) }
-        MenuEntry(4, Glyphs.dice, px.accent, "随机练习", "随机打乱刷题", 0) { vm.startPractice(PracticeMode.RANDOM) }
-        MenuEntry(5, Glyphs.paperCheck, px.ok, "模拟考试", "100题 / 45分钟 / 90分及格", 0, highlight = true) { vm.startExam() }
-        MenuEntry(6, Glyphs.xCircle, px.bad, "错题重练", "答对自动移出错题本", h.wrongCount) { vm.startPractice(PracticeMode.WRONG) }
-        MenuEntry(7, Glyphs.star, px.warn, "收藏夹", "练习中点击星标收藏", h.starredCount) { vm.startPractice(PracticeMode.STARRED) }
 
         Spacer(Modifier.height(6.dp))
         Text(
             "题库 ${vm.bankSize} 题 · 2026-07 更新 · 完全离线",
             style = MaterialTheme.typography.labelMedium,
             color = px.textDim,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
         )
 
-        // 吉祥物压轴
+        // ---------- 底部装饰带 ----------
         PixelCarDrive(
             carColor = px.accent,
             windowColor = px.cyan,
             wheelColor = px.text,
             roadColor = px.border,
             headlightColor = Color(0xFFFFF3B0),
-            modifier = Modifier.fillMaxWidth().height(70.dp).padding(bottom = 18.dp)
+            modifier = Modifier.fillMaxWidth().height(64.dp).padding(bottom = 14.dp)
         )
     }
 }
 
+/** 闯关轨道：块状路面 + 像素车停在进度位置（颠簸待发） */
 @Composable
-private fun StatCell(label: String, value: Int, suffix: String, color: Color, modifier: Modifier = Modifier) {
+private fun ProgressRoad(progress: Float) {
     val px = LocalPx.current
-    PixelCard(px = px, modifier = modifier, shadow = 3.dp) {
+    val t = rememberInfiniteTransition(label = "road")
+    val bounce by t.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(240), RepeatMode.Reverse),
+        label = "bounce"
+    )
+    val carX by animateFloatAsState(progress.coerceIn(0f, 1f), tween(600), label = "carX")
+    val carPalette = mapOf('S' to px.cyan, 'W' to px.text, 'L' to Color(0xFFFFF3B0))
+
+    BoxWithConstraints(Modifier.fillMaxWidth().height(38.dp)) {
+        val carW = 32.dp
+        val trackW = maxWidth - carW
+        // 路面：交替色块
+        androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(12.dp).align(Alignment.BottomCenter)) {
+            val block = 10.dp.toPx()
+            var x = 0f
+            var i = 0
+            while (x < size.width) {
+                drawRect(
+                    if (i % 2 == 0) px.border else px.surfaceAlt,
+                    androidx.compose.ui.geometry.Offset(x, 0f),
+                    androidx.compose.ui.geometry.Size(block.coerceAtMost(size.width - x), size.height)
+                )
+                x += block
+                i++
+            }
+        }
+        // 像素车：随进度前进 + 颠簸
+        PixelIcon(
+            glyph = Glyphs.car,
+            color = px.accent,
+            palette = carPalette,
+            scale = 2.dp,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .offset(x = trackW * carX, y = 2.dp + (if (bounce > 0.5f) 2.dp else 0.dp))
+                .size(32.dp, 16.dp)
+        )
+    }
+}
+
+/** 三格统计：数值 + 标签，数值颜色区分含义（value<0 显示"—"占位） */
+@Composable
+private fun StatChip(label: String, value: Int, color: Color, modifier: Modifier = Modifier) {
+    val px = LocalPx.current
+    PixelCard(px = px, modifier = modifier, contentPadding = 10.dp) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            CountUpText(value, MaterialTheme.typography.headlineMedium, suffix = suffix, color = color)
+            if (value >= 0) {
+                CountUpText(
+                    target = value,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                    color = color
+                )
+            } else {
+                Text(
+                    "—",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                    color = color
+                )
+            }
             Text(label, style = MaterialTheme.typography.labelMedium, color = px.textDim)
         }
     }
 }
 
+/** 2x2 宫格的模式卡片：大图标 + 名称 + 角标悬浮右上（RowScope 以便 weight 均分） */
 @Composable
-private fun MenuEntry(
-    stagger: Int,
+private fun androidx.compose.foundation.layout.RowScope.ModeCard(
     glyph: List<String>,
     tint: Color,
     name: String,
-    desc: String,
     badge: Int,
-    highlight: Boolean = false,
     onClick: () -> Unit
 ) {
     val px = LocalPx.current
-    StaggerIn(stagger) {
-        PixelButton(
-            px = px,
-            onClick = onClick,
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            bg = if (highlight) px.accent else px.surfaceAlt
-        ) {
-            PixelIcon(glyph, tint, Modifier.size(24.dp, 24.dp))
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.padding(vertical = 8.dp).weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (highlight) px.accentFg else px.text
-                    )
-                    if (badge > 0) {
-                        Spacer(Modifier.width(8.dp))
-                        com.km1quiz.app.ui.pixel.PixelBadge(badge, px)
-                    }
-                }
-                Text(
-                    desc,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = (if (highlight) px.accentFg else px.textDim).copy(alpha = 0.85f)
-                )
+    Box(Modifier.weight(1f)) {
+        PixelButton(px = px, onClick = onClick, modifier = Modifier.fillMaxWidth(), bg = px.surface) {
+            Column(
+                Modifier.fillMaxWidth().padding(vertical = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                PixelIcon(glyph, tint, Modifier.size(34.dp, 34.dp), scale = 2.8.dp)
+                Spacer(Modifier.height(8.dp))
+                Text(name, style = MaterialTheme.typography.titleMedium, color = px.text)
             }
+        }
+        if (badge > 0) {
+            PixelBadge(
+                badge, px,
+                Modifier.align(Alignment.TopEnd).offset(x = (-6).dp, y = (-6).dp).scale(0.9f)
+            )
         }
     }
 }

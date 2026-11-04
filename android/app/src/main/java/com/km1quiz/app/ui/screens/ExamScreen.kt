@@ -3,12 +3,9 @@ package com.km1quiz.app.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,6 +23,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,14 +36,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.km1quiz.app.data.Question
+import com.km1quiz.app.data.QType
 import com.km1quiz.app.ui.ExamUi
 import com.km1quiz.app.ui.QuizViewModel
 import com.km1quiz.app.ui.QuestionImage
@@ -54,25 +51,31 @@ import com.km1quiz.app.ui.pixel.Glyphs
 import com.km1quiz.app.ui.pixel.PixelBlockBar
 import com.km1quiz.app.ui.pixel.PixelButton
 import com.km1quiz.app.ui.pixel.PixelCard
+import com.km1quiz.app.ui.pixel.PixelChip
 import com.km1quiz.app.ui.pixel.PixelDialog
 import com.km1quiz.app.ui.pixel.PixelIcon
+import com.km1quiz.app.ui.pixel.PixelIconButton
 import com.km1quiz.app.ui.pixel.PixelTextButton
 import com.km1quiz.app.ui.rememberHaptics
 import com.km1quiz.app.ui.theme.LocalPx
 
-private val OPTION_LABELS = listOf("A", "B", "C", "D")
-
-/** 模拟考试屏：倒计时、答题卡跳题、交卷确认、返回键退出确认 */
+/**
+ * 模拟考试屏 v2
+ * 布局：标题+计时+交卷 → 进度与答题卡入口 → 题目 → 选项（判断题并排）→ 上下题
+ * 答题卡不再铺满页面，收进带图例的弹窗。
+ */
 @Composable
 fun ExamScreen(vm: QuizViewModel, ui: ExamUi) {
     val px = LocalPx.current
     val haptics = rememberHaptics()
+    var showSheet by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
 
-    // 返回键：先关确认层，再弹退出确认
+    // 返回键：确认层 → 答题卡 → 退出弹窗
     BackHandler(enabled = true) {
         when {
             ui.confirming -> vm.cancelConfirm()
+            showSheet -> { showSheet = false }
             showExitDialog -> { showExitDialog = false }
             else -> showExitDialog = true
         }
@@ -83,24 +86,23 @@ fun ExamScreen(vm: QuizViewModel, ui: ExamUi) {
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 14.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            // 顶栏：倒计时 + 交卷
+            // ---------- 顶栏：标题 + 计时 + 交卷 ----------
             Row(
-                Modifier.fillMaxWidth().padding(top = 10.dp),
+                Modifier.fillMaxWidth().padding(top = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                PixelIcon(Glyphs.paperCheck, px.ok, Modifier.size(20.dp, 20.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("模拟考试", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Text("模拟考试", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
                 TimerText(remainSec = ui.remainSec)
                 Spacer(Modifier.width(8.dp))
-                PixelTextButton("交卷", px, { vm.submitExam(false) }, small = true, bg = px.bad, fg = Color.White)
+                PixelTextButton("交卷", px, { vm.submitExam(false) }, bg = px.bad, fg = Color.White)
             }
 
-            // 进度
+            // ---------- 进度行 + 答题卡入口 ----------
+            Spacer(Modifier.height(10.dp))
             Row(
-                Modifier.fillMaxWidth().padding(top = 8.dp),
+                Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -109,25 +111,37 @@ fun ExamScreen(vm: QuizViewModel, ui: ExamUi) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = px.textDim
                 )
-                Box(Modifier.background(px.surfaceAlt).border(2.dp, px.border).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                    Text(
-                        if (ui.q?.type == com.km1quiz.app.data.QType.JUDGE) "判断题" else "单选题",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = px.textDim
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PixelChip(
+                        if (ui.q?.type == QType.JUDGE) "判断题" else "单选题",
+                        px,
+                        if (ui.q?.type == QType.JUDGE) px.cyan else px.accent
                     )
+                    Spacer(Modifier.width(8.dp))
+                    PixelButton(px = px, onClick = { showSheet = true }, bg = px.surfaceAlt) {
+                        PixelIcon(Glyphs.list, px.cyan, Modifier.padding(8.dp).size(20.dp, 20.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "答题卡",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = px.text,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(6.dp))
             PixelBlockBar(
                 progress = if (ui.size > 0) (ui.index + 1).toFloat() / ui.size else 0f,
                 px = px,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                blockH = 10.dp
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
 
             val q = ui.q ?: return@Column
 
-            // 题目卡片（方向性滑动）
+            // ---------- 题目卡片 ----------
             AnimatedContent(
                 targetState = ui.index,
                 transitionSpec = {
@@ -137,61 +151,89 @@ fun ExamScreen(vm: QuizViewModel, ui: ExamUi) {
                 },
                 label = "examSlide"
             ) { _ ->
-                PixelCard(px = px) {
+                PixelCard(px = px, contentPadding = 16.dp) {
                     QuestionImage(q.image, px)
                     Text(
                         q.question,
                         style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(top = if (q.image != null) 6.dp else 0.dp)
                     )
                 }
             }
 
-            // 选项
-            Column(Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                q.options.forEachIndexed { idx, opt ->
-                    Spacer(Modifier.height(6.dp))
-                    ExamOptionRow(
-                        label = OPTION_LABELS.getOrElse(idx) { "?" },
-                        text = opt,
-                        pickedNow = ui.picked == idx,
-                        onClick = {
-                            haptics(true)
-                            vm.examPick(idx)
+            // ---------- 选项（判断题并排） ----------
+            OptionsArea(
+                q = q,
+                stateOf = { idx -> if (ui.picked == idx) OptVisual.PICKED else OptVisual.NORMAL },
+                shakeKey = "exam",
+                onPick = { idx ->
+                    haptics(true)
+                    vm.examPick(idx)
+                }
+            )
+
+            // ---------- 上下题 ----------
+            Row(
+                Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 18.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PixelIconButton(
+                    glyph = Glyphs.arrowLeft,
+                    px = px,
+                    tint = if (ui.index > 0) px.text else px.textDim,
+                    onClick = { vm.examGoto(ui.index - 1) },
+                    size = 52.dp
+                )
+                Spacer(Modifier.width(10.dp))
+                PixelTextButton(
+                    text = "下一题",
+                    px = px,
+                    onClick = { vm.examGoto(ui.index + 1) },
+                    enabled = ui.index < ui.size - 1,
+                    bg = px.cyan,
+                    fg = px.accentFg,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        // ---------- 答题卡弹窗 ----------
+        if (showSheet) {
+            PixelDialog(
+                px = px,
+                onDismiss = { showSheet = false },
+                title = "答题卡 · 已答 ${ui.answered}/${ui.size}"
+            ) {
+                // 图例
+                Row(
+                    Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SheetLegend(px.accent, "已答", px)
+                    SheetLegend(px.surfaceAlt, "未答", px)
+                    SheetLegend(px.cyan, "当前", px)
+                }
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 430.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 8.dp)
+                ) {
+                    SheetGrid(
+                        picked = ui.sheetPicked,
+                        current = ui.index,
+                        onGoto = { i ->
+                            vm.examGoto(i)
+                            showSheet = false
                         }
                     )
                 }
             }
-
-            // 上下题
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                PixelTextButton(
-                    "上一题", px, { vm.examGoto(ui.index - 1) },
-                    enabled = ui.index > 0, bg = px.surfaceAlt, fg = px.text,
-                    modifier = Modifier.weight(1f)
-                )
-                PixelTextButton(
-                    "下一题", px, { vm.examGoto(ui.index + 1) },
-                    enabled = ui.index < ui.size - 1, bg = px.surfaceAlt, fg = px.text,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // 答题卡
-            Text("答题卡（点击跳题）", style = MaterialTheme.typography.labelMedium, color = px.textDim)
-            Spacer(Modifier.height(6.dp))
-            AnswerSheet(
-                picked = ui.sheetPicked,
-                current = ui.index,
-                onGoto = { vm.examGoto(it) }
-            )
-            Spacer(Modifier.height(24.dp))
         }
 
-        // 交卷确认弹窗
+        // ---------- 交卷确认弹窗 ----------
         if (ui.confirming) {
             PixelDialog(
                 px = px,
@@ -199,7 +241,7 @@ fun ExamScreen(vm: QuizViewModel, ui: ExamUi) {
                 title = "还有 ${ui.size - ui.answered} 题未作答"
             ) {
                 Text("确认交卷？交卷后立即评分。", style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     PixelTextButton(
                         "继续答题", px, { vm.cancelConfirm() },
@@ -213,7 +255,7 @@ fun ExamScreen(vm: QuizViewModel, ui: ExamUi) {
             }
         }
 
-        // 退出考试确认弹窗
+        // ---------- 退出考试弹窗 ----------
         if (showExitDialog) {
             PixelDialog(
                 px = px,
@@ -221,7 +263,7 @@ fun ExamScreen(vm: QuizViewModel, ui: ExamUi) {
                 title = "退出考试？"
             ) {
                 Text("本次作答将不作数。", style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     PixelTextButton(
                         "继续考试", px, { showExitDialog = false },
@@ -247,7 +289,7 @@ private fun TimerText(remainSec: Int) {
     val urgent = remainSec in 1..300
     val t = rememberInfiniteTransition(label = "timer")
     val pulse by t.animateFloat(
-        initialValue = 1f, targetValue = if (urgent) 1.15f else 1f,
+        initialValue = 1f, targetValue = if (urgent) 1.12f else 1f,
         animationSpec = infiniteRepeatable(tween(420), RepeatMode.Reverse),
         label = "timerPulse"
     )
@@ -256,7 +298,7 @@ private fun TimerText(remainSec: Int) {
             .scale(pulse)
             .background(if (urgent) px.bad.copy(alpha = 0.16f) else px.surfaceAlt)
             .border(2.dp, if (urgent) px.bad else px.border)
-            .padding(horizontal = 9.dp, vertical = 4.dp)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Text(
             fmtTime(remainSec),
@@ -266,65 +308,34 @@ private fun TimerText(remainSec: Int) {
     }
 }
 
+/** 答题卡图例：色块 + 文字 */
 @Composable
-private fun ExamOptionRow(label: String, text: String, pickedNow: Boolean, onClick: () -> Unit) {
-    val px = LocalPx.current
-    val borderColor = if (pickedNow) px.accent else px.border
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(if (pickedNow) px.accent.copy(alpha = 0.14f) else px.surface)
-            .border(2.dp, borderColor)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                enabled = true
-            ) { onClick() }
-            .padding(horizontal = 10.dp, vertical = 9.dp)
-    ) {
-        Box(
-            Modifier
-                .size(24.dp)
-                .background(if (pickedNow) px.accent else px.surfaceAlt)
-                .border(2.dp, borderColor),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = if (pickedNow) px.accentFg else px.text
-            )
-        }
-        Spacer(Modifier.width(10.dp))
-        Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+private fun SheetLegend(color: Color, label: String, px: com.km1quiz.app.ui.theme.Px) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(14.dp).background(color).border(2.dp, px.border))
+        Spacer(Modifier.width(5.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium, color = px.textDim)
     }
 }
 
-/** 答题卡：答过的格子弹一下，当前题描边高亮 */
+/** 答题卡网格：6 列，已答填充、当前描边加粗、点击跳题 */
 @Composable
-private fun AnswerSheet(picked: List<Int>, current: Int, onGoto: (Int) -> Unit) {
+private fun SheetGrid(picked: List<Int>, current: Int, onGoto: (Int) -> Unit) {
     val px = LocalPx.current
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         picked.chunked(6).forEachIndexed { rowIdx, row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 row.forEachIndexed { colIdx, p ->
                     val i = rowIdx * 6 + colIdx
                     val done = p >= 0
                     val isCurrent = i == current
-                    val scale by animateFloatAsState(
-                        targetValue = if (done) 1f else 0.92f,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                        label = "cell$i"
-                    )
                     Box(
                         Modifier
-                            .scale(scale)
-                            .size(36.dp)
+                            .size(40.dp)
                             .background(if (done) px.accent else px.surfaceAlt)
                             .border(
-                                width = if (isCurrent) 3.dp else 2.dp,
-                                color = if (isCurrent) px.accent else px.border
+                                width = if (isCurrent) 4.dp else 2.dp,
+                                color = if (isCurrent) px.cyan else px.border
                             )
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },

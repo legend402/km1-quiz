@@ -23,16 +23,17 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,35 +55,44 @@ import com.km1quiz.app.ui.theme.Px
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
-/** 像素卡片：2dp 硬边框 + 右下 4dp 硬阴影（无圆角、无模糊） */
+/**
+ * 像素设计系统 v2
+ * 原则：默认扁平（边框表达结构），硬阴影仅用于主 CTA/弹窗（elevated），
+ * 按压统一"下沉 1dp"的键帽手感，杜绝大面积阴影块。
+ */
+
+/** 像素卡片：默认扁平；elevated=true 时带 3dp 硬阴影（用于主角元素） */
 @Composable
 fun PixelCard(
     px: Px,
     modifier: Modifier = Modifier,
     bg: Color = px.surface,
-    shadow: Dp = 4.dp,
+    elevated: Boolean = false,
+    borderWidth: Dp = 2.dp,
+    contentPadding: Dp = 14.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Box(modifier.fillMaxWidth()) {
-        // 硬阴影块：跟随卡片尺寸
-        Box(
-            Modifier
-                .matchParentSize()
-                .offset(x = shadow, y = shadow)
-                .background(px.shadow)
-        )
+        if (elevated) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .offset(x = 3.dp, y = 3.dp)
+                    .background(px.shadow)
+            )
+        }
         Column(
             Modifier
                 .fillMaxWidth()
                 .background(bg)
-                .border(2.dp, px.border)
-                .padding(12.dp),
+                .border(borderWidth, px.border)
+                .padding(contentPadding),
             content = content
         )
     }
 }
 
-/** 像素按钮主体（含下沉动画），可自定义行内容 */
+/** 像素按钮：flat=日常（边框+按压下沉 1dp），elevated=主 CTA（3dp 硬影，按下沉入） */
 @Composable
 fun PixelButton(
     px: Px,
@@ -91,26 +101,30 @@ fun PixelButton(
     enabled: Boolean = true,
     bg: Color = px.accent,
     fg: Color = px.accentFg,
-    shadow: Dp = 4.dp,
+    elevated: Boolean = false,
     textStyle: TextStyle = MaterialTheme.typography.titleMedium,
     content: @Composable RowScope.() -> Unit
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val depth by animateDpAsState(
-        targetValue = if (pressed) shadow else 0.dp,
+        targetValue = when {
+            pressed && elevated -> 3.dp
+            pressed -> 1.dp
+            else -> 0.dp
+        },
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 900f),
         label = "depth"
     )
     Box(modifier) {
-        // 固定阴影
-        Box(
-            Modifier
-                .matchParentSize()
-                .offset(x = shadow, y = shadow)
-                .background(if (enabled) px.shadow else px.border.copy(alpha = 0.35f))
-        )
-        // 按钮本体：决定尺寸，按下时下沉盖住阴影
+        if (elevated) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .offset(x = 3.dp, y = 3.dp)
+                    .background(if (enabled) px.shadow else px.border.copy(alpha = 0.3f))
+            )
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
@@ -125,7 +139,7 @@ fun PixelButton(
     }
 }
 
-/** 纯文字像素按钮（默认不带外层 padding 的快捷形态） */
+/** 纯文字像素按钮 */
 @Composable
 fun PixelTextButton(
     text: String,
@@ -135,19 +149,101 @@ fun PixelTextButton(
     enabled: Boolean = true,
     bg: Color = px.accent,
     fg: Color = px.accentFg,
+    elevated: Boolean = false,
     small: Boolean = false
 ) {
-    PixelButton(px = px, onClick = onClick, modifier = modifier, enabled = enabled, bg = bg) {
+    PixelButton(px = px, onClick = onClick, modifier = modifier, enabled = enabled, bg = bg, elevated = elevated) {
         Text(
             text,
             style = if (small) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium,
             color = fg,
-            modifier = Modifier.padding(horizontal = if (small) 8.dp else 14.dp, vertical = if (small) 5.dp else 10.dp)
+            modifier = Modifier.padding(
+                horizontal = if (small) 10.dp else 16.dp,
+                vertical = if (small) 6.dp else 12.dp
+            )
         )
     }
 }
 
-/** 分格块状进度条：填充块以弹性动画逐格弹出 */
+/** 方形图标按钮（上一题/下一题/星标/关闭等） */
+@Composable
+fun PixelIconButton(
+    glyph: List<String>,
+    px: Px,
+    tint: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp,
+    bg: Color = px.surfaceAlt
+) {
+    PixelButton(px = px, onClick = onClick, modifier = modifier, bg = bg) {
+        PixelIcon(
+            glyph = glyph,
+            color = tint,
+            modifier = Modifier
+                .padding((size.value / 48f * 11f).dp)
+                .size(24.dp, 24.dp)
+        )
+    }
+}
+
+/** 像素小徽章：题型（判断/单选）、图例等 */
+@Composable
+fun PixelChip(text: String, px: Px, color: Color, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .background(color.copy(alpha = 0.16f))
+            .border(2.dp, color)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    ) {
+        Text(text, style = MaterialTheme.typography.labelMedium, color = color)
+    }
+}
+
+/** 区块小标题：像素四点 + 文字（增加像素活跃感） */
+@Composable
+fun SectionTitle(text: String, px: Px, color: Color = px.accent, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        PixelQuads(color, Modifier.size(10.dp, 10.dp))
+        SpacerW(6.dp)
+        Text(text, style = MaterialTheme.typography.labelMedium, color = color)
+    }
+}
+
+/** 2x2 像素四点装饰 */
+@Composable
+fun PixelQuads(color: Color, modifier: Modifier = Modifier) {
+    val block = with(androidx.compose.ui.platform.LocalDensity.current) { 2.5.dp.toPx() }
+    androidx.compose.foundation.Canvas(modifier) {
+        drawRect(color, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Size(block, block))
+        drawRect(color, androidx.compose.ui.geometry.Offset(block * 2, 0f), androidx.compose.ui.geometry.Size(block, block))
+        drawRect(color, androidx.compose.ui.geometry.Offset(0f, block * 2), androidx.compose.ui.geometry.Size(block, block))
+        drawRect(color, androidx.compose.ui.geometry.Offset(block * 2, block * 2), androidx.compose.ui.geometry.Size(block, block))
+    }
+}
+
+/** 像素虚线分隔线（4dp 方块间隔排布） */
+@Composable
+fun PixelDivider(px: Px, modifier: Modifier = Modifier, color: Color = px.border) {
+    androidx.compose.foundation.Canvas(
+        modifier
+            .fillMaxWidth()
+            .height(4.dp)
+    ) {
+        val block = 4.dp.toPx()
+        var x = 0f
+        while (x < size.width) {
+            drawRect(color, androidx.compose.ui.geometry.Offset(x, 0f), androidx.compose.ui.geometry.Size(block, block))
+            x += block * 2
+        }
+    }
+}
+
+/** 便捷横向空隙 */
+@Composable
+fun SpacerW(w: Dp) { androidx.compose.foundation.layout.Spacer(Modifier.width(w)) }
+
+/** 分格块状进度条：填充块弹性逐格弹出 */
 @Composable
 fun PixelBlockBar(
     progress: Float,
@@ -183,7 +279,7 @@ fun PixelBlockBar(
     }
 }
 
-/** 数字跳动累加文本（首页统计 / 成绩分） */
+/** 数字跳动累加文本 */
 @Composable
 fun CountUpText(
     target: Int,
@@ -200,13 +296,13 @@ fun CountUpText(
     Text("$shown$suffix", style = style, color = color)
 }
 
-/** 角标：数值 > 0 时持续脉冲 */
+/** 角标：>0 时持续脉冲 */
 @Composable
 fun PixelBadge(count: Int, px: Px, modifier: Modifier = Modifier) {
     if (count <= 0) { return }
     val t = rememberInfiniteTransition(label = "badge")
     val pulse by t.animateFloat(
-        initialValue = 1f, targetValue = 1.15f,
+        initialValue = 1f, targetValue = 1.12f,
         animationSpec = infiniteRepeatable(tween(480), RepeatMode.Reverse),
         label = "pulse"
     )
@@ -221,12 +317,12 @@ fun PixelBadge(count: Int, px: Px, modifier: Modifier = Modifier) {
     }
 }
 
-/** 错误抖动：key 变化时横向 shake 一下（0 不触发） */
+/** 错误抖动：key 变化时横向 shake */
 @Composable
 fun Modifier.shakeOn(shakeKey: Any): Modifier {
     val anim = remember { Animatable(0f) }
     LaunchedEffect(shakeKey) {
-        if (shakeKey == 0) { return@LaunchedEffect }
+        if (shakeKey == 0 || shakeKey == "0:null") { return@LaunchedEffect }
         anim.snapTo(0f)
         listOf(0f, -10f, 9f, -7f, 5f, -3f, 2f, 0f).forEach { v ->
             anim.snapTo(v)
@@ -236,7 +332,7 @@ fun Modifier.shakeOn(shakeKey: Any): Modifier {
     return this.offset { IntOffset(anim.value.roundToInt(), 0) }
 }
 
-/** 列表项依次弹入（stagger）：index 越大越晚出现 */
+/** 列表项依次弹入 */
 @Composable
 fun StaggerIn(index: Int, content: @Composable () -> Unit) {
     var visible by remember { mutableStateOf(false) }
@@ -251,10 +347,7 @@ fun StaggerIn(index: Int, content: @Composable () -> Unit) {
     ) { content() }
 }
 
-/**
- * 像素弹窗：占满父容器的遮罩 + 居中缩放弹入卡片。
- * 需要全屏时由调用方放入 Box(fillMaxSize)。
- */
+/** 像素弹窗：遮罩 + 弹簧缩放卡片 */
 @Composable
 fun PixelDialog(
     px: Px,
@@ -277,38 +370,11 @@ fun PixelDialog(
             ) { onDismiss?.invoke() },
         contentAlignment = Alignment.Center
     ) {
-        Box(Modifier.fillMaxWidth().padding(horizontal = 30.dp).scale(appear.value)) {
-            PixelCard(px = px, bg = px.surface) {
-                Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 8.dp))
+        Box(Modifier.fillMaxWidth().padding(horizontal = 28.dp).scale(appear.value)) {
+            PixelCard(px = px, bg = px.surface, elevated = true, contentPadding = 16.dp) {
+                Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 10.dp))
                 content()
             }
         }
     }
-}
-
-/** 供屏幕复用：屏幕级容器内的小图标按钮（星标/关闭等） */
-@Composable
-fun PixelIconButton(
-    glyph: List<String>,
-    px: Px,
-    tint: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    contentDescription: String = ""
-) {
-    PixelButton(px = px, onClick = onClick, modifier = modifier, shadow = 3.dp) {
-        PixelIcon(
-            glyph = glyph,
-            color = tint,
-            modifier = Modifier
-                .padding(horizontal = 6.dp, vertical = 6.dp)
-                .size(24.dp, 24.dp)
-        )
-    }
-}
-
-/** 遮罩内容对齐用的占位扩展（避免每个屏幕重复写 Box 组合） */
-@Composable
-fun BoxScope.CenterOverlay(content: @Composable BoxScope.() -> Unit) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center, content = content)
 }
