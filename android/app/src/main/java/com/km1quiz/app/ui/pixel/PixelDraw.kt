@@ -195,7 +195,10 @@ object Glyphs {
     )
 }
 
-/** 通用像素图标：glyph 网格 + palette；圆润皮肤自动以圆角矩形渲染（图形更柔和） */
+/**
+ * 通用图标：像素皮肤按网格绘制；非像素皮肤自动查 SoftVectors 换平滑矢量图标。
+ * 未映射的字形（如像素小车）在所有皮肤保持像素渲染。
+ */
 @Composable
 fun PixelIcon(
     glyph: List<String>,
@@ -204,23 +207,23 @@ fun PixelIcon(
     palette: Map<Char, Color> = emptyMap(),
     scale: Dp = 2.dp
 ) {
-    val soft = com.km1quiz.app.ui.theme.LocalPx.current.iconSoft
+    val softVector = if (com.km1quiz.app.ui.theme.LocalPx.current.iconSoft) SoftVectors[glyph] else null
+    if (softVector != null) {
+        androidx.compose.foundation.Image(
+            imageVector = softVector,
+            contentDescription = null,
+            modifier = modifier,
+            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(color)
+        )
+        return
+    }
     val block = with(LocalDensity.current) { scale.toPx() }
     Canvas(modifier) {
         glyph.forEachIndexed { y, row ->
             row.forEachIndexed { x, c ->
                 if (c == '.') { return@forEachIndexed }
                 val col = if (c == 'X') color else palette[c] ?: color
-                if (soft) {
-                    drawRoundRect(
-                        color = col,
-                        topLeft = Offset(x * block, y * block),
-                        size = Size(block * 1.15f, block * 1.15f),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(block * 0.38f)
-                    )
-                } else {
-                    drawRect(col, Offset(x * block, y * block), Size(block, block))
-                }
+                drawRect(col, Offset(x * block, y * block), Size(block, block))
             }
         }
     }

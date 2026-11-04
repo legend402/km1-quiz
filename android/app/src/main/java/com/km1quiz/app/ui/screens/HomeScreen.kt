@@ -209,15 +209,17 @@ fun HomeScreen(vm: QuizViewModel) {
             modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
         )
 
-        // ---------- 底部装饰带 ----------
-        PixelCarDrive(
-            carColor = px.accent,
-            windowColor = px.cyan,
-            wheelColor = px.text,
-            roadColor = px.border,
-            headlightColor = Color(0xFFFFF3B0),
-            modifier = Modifier.fillMaxWidth().height(64.dp).padding(bottom = 14.dp)
-        )
+        // ---------- 底部装饰带（仅像素皮肤；其余皮肤收起像素小车） ----------
+        if (px.skin == com.km1quiz.app.ui.theme.Skin.PIXEL) {
+            PixelCarDrive(
+                carColor = px.accent,
+                windowColor = px.cyan,
+                wheelColor = px.text,
+                roadColor = px.border,
+                headlightColor = Color(0xFFFFF3B0),
+                modifier = Modifier.fillMaxWidth().height(64.dp).padding(bottom = 14.dp)
+            )
+        }
         }
 
         // ---------- 风格选择弹窗（皮肤 × 配色，点击即时预览） ----------
@@ -360,17 +362,34 @@ private fun ProgressRoad(progress: Float) {
                 )
             }
         }
-        // 像素车：随进度前进 + 颠簸
-        PixelIcon(
-            glyph = Glyphs.car,
-            color = px.accent,
-            palette = carPalette,
-            scale = 2.dp,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .offset(x = trackW * carX, y = 2.dp + (if (bounce > 0.5f) 2.dp else 0.dp))
-                .size(32.dp, 16.dp)
-        )
+        // 小车：随进度前进 + 颠簸（像素皮肤=像素车，其余=平滑圆角车）
+        val carMod = Modifier
+            .align(Alignment.BottomStart)
+            .offset(x = trackW * carX, y = 2.dp + (if (bounce > 0.5f) 2.dp else 0.dp))
+        if (px.skin == com.km1quiz.app.ui.theme.Skin.PIXEL) {
+            PixelIcon(
+                glyph = Glyphs.car,
+                color = px.accent,
+                palette = carPalette,
+                scale = 2.dp,
+                modifier = carMod.size(32.dp, 16.dp)
+            )
+        } else {
+            androidx.compose.foundation.Canvas(carMod.size(34.dp, 18.dp)) {
+                val w = size.width
+                val h = size.height
+                val r = androidx.compose.ui.geometry.CornerRadius(h * 0.28f)
+                // 车身 + 座舱
+                drawRoundRect(px.accent, androidx.compose.ui.geometry.Offset(0f, h * 0.35f), androidx.compose.ui.geometry.Size(w, h * 0.5f), cornerRadius = r)
+                drawRoundRect(px.accent, androidx.compose.ui.geometry.Offset(w * 0.24f, h * 0.08f), androidx.compose.ui.geometry.Size(w * 0.5f, h * 0.5f), cornerRadius = r)
+                // 车窗
+                drawRoundRect(px.cyan, androidx.compose.ui.geometry.Offset(w * 0.31f, h * 0.16f), androidx.compose.ui.geometry.Size(w * 0.16f, h * 0.3f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(h * 0.1f))
+                drawRoundRect(px.cyan, androidx.compose.ui.geometry.Offset(w * 0.51f, h * 0.16f), androidx.compose.ui.geometry.Size(w * 0.16f, h * 0.3f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(h * 0.1f))
+                // 车轮
+                drawCircle(px.text, radius = h * 0.17f, center = androidx.compose.ui.geometry.Offset(w * 0.24f, h * 0.85f))
+                drawCircle(px.text, radius = h * 0.17f, center = androidx.compose.ui.geometry.Offset(w * 0.76f, h * 0.85f))
+            }
+        }
     }
 }
 
