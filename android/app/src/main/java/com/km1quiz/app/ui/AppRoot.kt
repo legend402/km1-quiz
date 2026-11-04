@@ -42,15 +42,19 @@ fun AppRoot(vm: QuizViewModel) {
     val px = LocalPx.current
     val context = LocalContext.current
 
-    // 首页双击返回退出
+    // 返回键：非考试屏统一退回首页（考试屏由 ExamScreen 自己接管），首页双击退出
     var lastBackAt by remember { mutableLongStateOf(0L) }
-    BackHandler(enabled = vm.screen == Screen.HOME && vm.loaded) {
-        val now = System.currentTimeMillis()
-        if (now - lastBackAt < 2000) {
-            (context as? android.app.Activity)?.finish()
+    BackHandler(enabled = vm.loaded && vm.screen != Screen.EXAM) {
+        if (vm.screen == Screen.HOME) {
+            val now = System.currentTimeMillis()
+            if (now - lastBackAt < 2000) {
+                (context as? android.app.Activity)?.finish()
+            } else {
+                lastBackAt = now
+                Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show()
+            }
         } else {
-            lastBackAt = now
-            Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show()
+            vm.exitToHome()
         }
     }
 

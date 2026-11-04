@@ -88,18 +88,24 @@ fun PixelTheme(
     content: @Composable () -> Unit
 ) {
     val px = if (darkTheme) PxDark else PxLight
-    androidx.compose.runtime.CompositionLocalProvider(LocalPx provides px) {
+    val scheme = androidx.compose.material3.darkColorScheme(
+        primary = px.accent,
+        onPrimary = px.accentFg,
+        secondary = px.cyan,
+        background = px.bg,
+        onBackground = px.text,
+        surface = px.surface,
+        onSurface = px.text,
+        error = px.bad
+    )
+    // 关键：未显式指定颜色的 Text 走 LocalContentColor（默认黑字，深色主题下不可读），
+    // 这里统一注入主题前景色，一处修复所有屏幕。
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalPx provides px,
+        androidx.compose.material3.LocalContentColor provides px.text
+    ) {
         MaterialTheme(
-            colorScheme = androidx.compose.material3.darkColorScheme(
-                primary = px.accent,
-                onPrimary = px.accentFg,
-                secondary = px.cyan,
-                background = px.bg,
-                onBackground = px.text,
-                surface = px.surface,
-                onSurface = px.text,
-                error = px.bad
-            ),
+            colorScheme = scheme,
             typography = TypographyPx,
             content = content
         )
