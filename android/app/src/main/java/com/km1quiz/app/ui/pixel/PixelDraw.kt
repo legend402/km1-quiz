@@ -195,7 +195,7 @@ object Glyphs {
     )
 }
 
-/** 通用像素图标：glyph 网格 + palette（'X' 用 color，其余字符查表） */
+/** 通用像素图标：glyph 网格 + palette；圆润皮肤自动以圆角矩形渲染（图形更柔和） */
 @Composable
 fun PixelIcon(
     glyph: List<String>,
@@ -204,16 +204,23 @@ fun PixelIcon(
     palette: Map<Char, Color> = emptyMap(),
     scale: Dp = 2.dp
 ) {
+    val soft = com.km1quiz.app.ui.theme.LocalPx.current.iconSoft
     val block = with(LocalDensity.current) { scale.toPx() }
     Canvas(modifier) {
         glyph.forEachIndexed { y, row ->
             row.forEachIndexed { x, c ->
                 if (c == '.') { return@forEachIndexed }
-                drawRect(
-                    color = if (c == 'X') color else palette[c] ?: color,
-                    topLeft = Offset(x * block, y * block),
-                    size = Size(block, block)
-                )
+                val col = if (c == 'X') color else palette[c] ?: color
+                if (soft) {
+                    drawRoundRect(
+                        color = col,
+                        topLeft = Offset(x * block, y * block),
+                        size = Size(block * 1.15f, block * 1.15f),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(block * 0.38f)
+                    )
+                } else {
+                    drawRect(col, Offset(x * block, y * block), Size(block, block))
+                }
             }
         }
     }
@@ -273,7 +280,7 @@ fun PixelCarDrive(
     }
 }
 
-/** 像素五彩纸屑：仅在有 content 时播放，方块粒子下落 + 摆动 */
+/** 像素五彩纸屑：像素皮肤=方块，圆润皮肤=圆点 */
 @Composable
 fun PixelConfetti(colors: List<Color>, modifier: Modifier = Modifier, seed: Int = 7) {
     val t = rememberInfiniteTransition(label = "confetti")
@@ -282,6 +289,7 @@ fun PixelConfetti(colors: List<Color>, modifier: Modifier = Modifier, seed: Int 
         animationSpec = infiniteRepeatable(tween(3200, easing = LinearEasing), RepeatMode.Restart),
         label = "time"
     )
+    val soft = com.km1quiz.app.ui.theme.LocalPx.current.iconSoft
     val rnd = remember(seed) { Random(seed) }
     val blockPx = with(LocalDensity.current) { 3.dp.toPx() }
     Canvas(modifier) {
@@ -295,7 +303,11 @@ fun PixelConfetti(colors: List<Color>, modifier: Modifier = Modifier, seed: Int 
             val s = blockPx * sizeBlocks
             val y = (time * speed + laneSeed) % 1f * (size.height + s * 2) - s
             val x = laneX + kotlin.math.sin((time * 4f + sway * 6.28f) * 2f) * blockPx * 3f
-            drawRect(colors[i % colors.size], Offset(x, y), Size(s, s))
+            if (soft) {
+                drawCircle(colors[i % colors.size], radius = s / 2f, center = Offset(x + s / 2f, y + s / 2f))
+            } else {
+                drawRect(colors[i % colors.size], Offset(x, y), Size(s, s))
+            }
         }
     }
 }

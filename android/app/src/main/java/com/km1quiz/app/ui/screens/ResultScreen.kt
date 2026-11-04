@@ -146,7 +146,7 @@ fun ResultScreen(vm: QuizViewModel, ui: ResultUi) {
     }
 }
 
-/** PASS / RETRY 印章：弹簧砸下，立于分数右侧（不遮挡数字） */
+/** PASS / RETRY 印章：弹簧砸下，立于分数右侧（不遮挡数字）；圆润皮肤为圆角徽章 */
 @Composable
 private fun PassStamp(passed: Boolean) {
     val px = LocalPx.current
@@ -155,11 +155,16 @@ private fun PassStamp(passed: Boolean) {
         appear.snapTo(2.4f)
         appear.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 260f))
     }
+    val shape = if (px.skin == com.km1quiz.app.ui.theme.Skin.PIXEL) {
+        androidx.compose.foundation.shape.RoundedCornerShape(0.dp)
+    } else {
+        androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+    }
     Box(
         Modifier
-            .rotate(-10f)
+            .rotate(if (px.skin == com.km1quiz.app.ui.theme.Skin.PIXEL) -10f else -6f)
             .scale(appear.value)
-            .border(4.dp, if (passed) px.ok else px.bad)
+            .border(if (px.skin == com.km1quiz.app.ui.theme.Skin.PIXEL) 4.dp else 3.dp, if (passed) px.ok else px.bad, shape)
             .padding(horizontal = 10.dp, vertical = 2.dp)
     ) {
         Text(

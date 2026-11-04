@@ -10,15 +10,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.km1quiz.app.R
 
 /** Fusion Pixel（缝合像素字体，OFL 开源）— 全局像素感的基础 */
 val PixelFont = FontFamily(Font(R.font.fusion_pixel))
 
+/** 皮肤（视觉语言）：像素 / 现代圆润 / 毛玻璃 / 拟物纸卡 / 新拟态 */
+enum class Skin { PIXEL, SOFT, GLASS, PAPER, NEU }
+
 /**
- * 像素风调色板：深色 = 深蓝黑底 + 霓虹；浅色 = 奶油纸面 + 浓墨描边（复古游戏说明书风）。
- * 硬边框 + 硬阴影由组件层实现，这里只管颜色。
+ * 调色板 + 皮肤渲染参数。
+ * 颜色字段由配色主题提供；skin 系列字段描述形状语言（圆角/边框/字体/图标形态等），
+ * 组件层根据它们切换渲染方式，从而实现"配色 × 皮肤"自由组合。
  */
 @Immutable
 data class Px(
@@ -34,7 +39,15 @@ data class Px(
     val ok: Color,
     val bad: Color,
     val warn: Color,
-    val cyan: Color
+    val cyan: Color,
+    // ---- 皮肤渲染参数（默认 = 像素风） ----
+    val skin: Skin = Skin.PIXEL,
+    val corner: androidx.compose.ui.unit.Dp = 0.dp,   // 非像素皮肤的圆角半径
+    val iconSoft: Boolean = false,                     // 图标格点用圆角矩形渲染
+    val fontPixel: Boolean = true,                     // 像素字体 vs 系统字体
+    val barDiscrete: Boolean = true,                   // 分格进度条 vs 连续圆角条
+    val checkerBg: Boolean = true,                     // 棋盘底纹
+    val translucent: Boolean = false                   // 毛玻璃：表面半透明 + 细光边
 )
 
 val PxDark = Px(
@@ -79,16 +92,28 @@ val TypographyPx = Typography(
     labelMedium = TextStyle(fontFamily = PixelFont, fontSize = 11.sp, lineHeight = 15.sp)
 )
 
+/** 非像素皮肤用系统字体，字号略放大 */
+val TypographySoft = Typography(
+    displayLarge = TextStyle(fontFamily = FontFamily.Default, fontSize = 54.sp, lineHeight = 60.sp),
+    displayMedium = TextStyle(fontFamily = FontFamily.Default, fontSize = 38.sp, lineHeight = 44.sp),
+    headlineMedium = TextStyle(fontFamily = FontFamily.Default, fontSize = 22.sp, lineHeight = 28.sp),
+    titleMedium = TextStyle(fontFamily = FontFamily.Default, fontSize = 16.sp, lineHeight = 24.sp),
+    bodyLarge = TextStyle(fontFamily = FontFamily.Default, fontSize = 16.sp, lineHeight = 24.sp),
+    bodyMedium = TextStyle(fontFamily = FontFamily.Default, fontSize = 14.sp, lineHeight = 21.sp),
+    labelMedium = TextStyle(fontFamily = FontFamily.Default, fontSize = 12.sp, lineHeight = 16.sp)
+)
+
 /** 全局取像素调色板：val px = LocalPx.current */
 val LocalPx = staticCompositionLocalOf { PxDark }
 
 @Composable
 fun PixelTheme(
     styleId: String = PxStyles.DEFAULT_ID,
+    skinId: String = PxStyles.SKIN_PIXEL,
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val px = PxStyles.resolve(styleId, darkTheme)
+    val px = PxStyles.resolve(styleId, darkTheme).let { PxStyles.applySkin(it, skinId) }
     val scheme = androidx.compose.material3.darkColorScheme(
         primary = px.accent,
         onPrimary = px.accentFg,
@@ -107,8 +132,8 @@ fun PixelTheme(
     ) {
         MaterialTheme(
             colorScheme = scheme,
-            typography = TypographyPx,
-            content = content
-        )
+            typography = if (px.fontPixel) TypographyPx else TypographySoft,
+                content = content
+            )
     }
 }

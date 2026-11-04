@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.km1quiz.app.data.Question
 import com.km1quiz.app.ui.pixel.Glyphs
+import com.km1quiz.app.ui.pixel.KeycapLetter
 import com.km1quiz.app.ui.pixel.PixelIcon
 import com.km1quiz.app.ui.pixel.shakeOn
 import com.km1quiz.app.ui.theme.LocalPx
@@ -87,7 +88,7 @@ fun OptionsArea(
     }
 }
 
-/** 选项行：扁平 + 键帽字母块 + 状态填充/对错图标弹出 */
+/** 选项行：按皮肤渲染容器与字母块 */
 @Composable
 private fun OptionRow(
     label: String,
@@ -111,6 +112,11 @@ private fun OptionRow(
         OptVisual.PICKED -> px.accent.copy(alpha = 0.14f)
         else -> px.surface
     }
+    val shape = when (px.skin) {
+        com.km1quiz.app.ui.theme.Skin.PIXEL -> androidx.compose.foundation.shape.RoundedCornerShape(0.dp)
+        com.km1quiz.app.ui.theme.Skin.PAPER -> androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
+        else -> androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+    }
     val shake = if (visual == OptVisual.WRONG) {
         Modifier.shakeOn(shakeKey)
     } else {
@@ -122,8 +128,15 @@ private fun OptionRow(
             .then(shake)
             .fillMaxWidth()
             .alpha(if (visual == OptVisual.DIM) 0.5f else 1f)
-            .background(bg)
-            .border(2.dp, accent)
+            .background(bg, shape)
+            .then(
+                when (px.skin) {
+                    com.km1quiz.app.ui.theme.Skin.PIXEL -> Modifier.border(2.dp, accent, shape)
+                    com.km1quiz.app.ui.theme.Skin.PAPER -> Modifier.border(1.dp, accent, shape)
+                    com.km1quiz.app.ui.theme.Skin.GLASS -> Modifier.border(1.dp, accent.copy(alpha = 0.5f), shape)
+                    else -> Modifier
+                }
+            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -131,31 +144,23 @@ private fun OptionRow(
             ) { onPick() }
             .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
-        // 键帽字母块
-        Box(
-            Modifier
-                .size(30.dp)
-                .background(
-                    when (visual) {
-                        OptVisual.CORRECT -> px.ok
-                        OptVisual.WRONG -> px.bad
-                        OptVisual.PICKED -> px.accent
-                        else -> px.surfaceAlt
-                    }
-                )
-                .border(2.dp, accent),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = when (visual) {
-                    OptVisual.CORRECT, OptVisual.WRONG -> Color.White
-                    OptVisual.PICKED -> px.accentFg
-                    else -> px.text
-                }
-            )
-        }
+        // 字母块：像素=键帽，其余=圆形
+        KeycapLetter(
+            label = label,
+            bgColor = when (visual) {
+                OptVisual.CORRECT -> px.ok
+                OptVisual.WRONG -> px.bad
+                OptVisual.PICKED -> px.accent
+                else -> px.surfaceAlt
+            },
+            textColor = when (visual) {
+                OptVisual.CORRECT, OptVisual.WRONG -> Color.White
+                OptVisual.PICKED -> px.accentFg
+                else -> px.text
+            },
+            edgeColor = accent,
+            px = px
+        )
         Spacer(Modifier.width(12.dp))
         Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         AnimatedVisibility(

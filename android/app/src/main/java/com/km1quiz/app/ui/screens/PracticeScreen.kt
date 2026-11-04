@@ -215,7 +215,12 @@ private fun ExplainPanel(q: Question, correct: Boolean) {
     val px = LocalPx.current
     val edge = if (correct) px.ok else px.bad
     Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min)) {
-        Box(Modifier.width(5.dp).fillMaxHeight().background(edge))
+        val edgeShape = if (px.skin == com.km1quiz.app.ui.theme.Skin.PIXEL) {
+            androidx.compose.foundation.shape.RoundedCornerShape(0.dp)
+        } else {
+            androidx.compose.foundation.shape.RoundedCornerShape(3.dp)
+        }
+        Box(Modifier.width(5.dp).fillMaxHeight().background(edge, edgeShape))
         Column(Modifier.weight(1f).padding(start = 14.dp, top = 12.dp, bottom = 12.dp, end = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PixelIcon(

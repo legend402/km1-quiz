@@ -1,7 +1,9 @@
 package com.km1quiz.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.unit.dp
 
 /**
  * 界面风格库：每套风格一个 Px 调色板。
@@ -80,6 +82,61 @@ object PxStyles {
     )
 
     const val DEFAULT_ID = "classic"
+
+    // ---- 皮肤（视觉语言），可与任意配色组合 ----
+    const val SKIN_PIXEL = "pixel"
+    const val SKIN_SOFT = "soft"
+    const val SKIN_GLASS = "glass"
+    const val SKIN_PAPER = "paper"
+    const val SKIN_NEU = "neu"
+
+    val SKINS = listOf(
+        SKIN_PIXEL to "像素",
+        SKIN_SOFT to "圆润",
+        SKIN_GLASS to "毛玻璃",
+        SKIN_PAPER to "纸卡",
+        SKIN_NEU to "新拟态"
+    )
+
+    /** 在配色基础上应用皮肤：调整形状参数（部分皮肤会派生表面色） */
+    fun applySkin(base: Px, skinId: String?): Px = when (skinId) {
+        SKIN_SOFT -> base.copy(
+            skin = Skin.SOFT, corner = 20.dp, iconSoft = true, fontPixel = false,
+            barDiscrete = false, checkerBg = false
+        )
+        SKIN_GLASS -> {
+            val dark = base.bg.luminance() < 0.5f
+            base.copy(
+                skin = Skin.GLASS, corner = 24.dp, iconSoft = true, fontPixel = false,
+                barDiscrete = false, checkerBg = true, translucent = true,
+                surface = if (dark) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.55f),
+                surfaceAlt = if (dark) Color.White.copy(alpha = 0.17f) else Color.White.copy(alpha = 0.70f),
+                border = if (dark) Color.White.copy(alpha = 0.30f) else Color.White,
+                shadow = Color.Black.copy(alpha = 0.30f)
+            )
+        }
+        SKIN_PAPER -> base.copy(
+            // 纸感固定中性色，强调色沿用所选配色
+            skin = Skin.PAPER, corner = 10.dp, iconSoft = true, fontPixel = false,
+            barDiscrete = false, checkerBg = false,
+            bg = Color(0xFFF2EAD5), surface = Color(0xFFFBF5E6), surfaceAlt = Color(0xFFEBE1C8),
+            border = Color(0xFF8D8168), shadow = Color(0xFF8D8168),
+            text = Color(0xFF43403A), textDim = Color(0xFF8B8574)
+        )
+        SKIN_NEU -> {
+            val dark = base.bg.luminance() < 0.5f
+            base.copy(
+                skin = Skin.NEU, corner = 18.dp, iconSoft = true, fontPixel = false,
+                barDiscrete = false, checkerBg = false,
+                surface = base.bg,
+                surfaceAlt = (if (dark) Color.White.copy(alpha = 0.07f) else Color.Black.copy(alpha = 0.05f))
+                    .compositeOver(base.bg),
+                border = Color.Transparent,
+                shadow = if (dark) Color.Black.copy(alpha = 0.55f) else Color(0xFFB9B5AC)
+            )
+        }
+        else -> base
+    }
 
     fun byId(id: String?): StyleMeta = STYLES.firstOrNull { it.id == id } ?: CLASSIC
 

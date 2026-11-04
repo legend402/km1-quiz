@@ -83,7 +83,11 @@ fun HomeScreen(vm: QuizViewModel) {
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text("科目一刷题", style = MaterialTheme.typography.headlineMedium)
-                Text("驾照理论 · 像素修炼场", style = MaterialTheme.typography.labelMedium, color = px.textDim)
+                Text(
+                    if (px.skin == com.km1quiz.app.ui.theme.Skin.PIXEL) "驾照理论 · 像素修炼场" else "驾照理论 · 驾考修炼场",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = px.textDim
+                )
             }
             // 风格切换（2x2 四色块图标）
             PixelButton(px = px, onClick = { showStylePicker = true }, bg = px.surfaceAlt) {
@@ -216,7 +220,7 @@ fun HomeScreen(vm: QuizViewModel) {
         )
         }
 
-        // ---------- 风格选择弹窗（点击即时预览，点空白关闭） ----------
+        // ---------- 风格选择弹窗（皮肤 × 配色，点击即时预览） ----------
         if (showStylePicker) {
             PixelDialog(
                 px = px,
@@ -225,6 +229,25 @@ fun HomeScreen(vm: QuizViewModel) {
             ) {
                 Text("点击即时换装，点空白处关闭", style = MaterialTheme.typography.labelMedium, color = px.textDim)
                 Spacer(Modifier.height(10.dp))
+                com.km1quiz.app.ui.pixel.SectionTitle("皮肤", px)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    com.km1quiz.app.ui.theme.PxStyles.SKINS.forEach { (skinId, skinName) ->
+                        val active = vm.skinId == skinId
+                        com.km1quiz.app.ui.pixel.PixelTextButton(
+                            text = skinName,
+                            px = px,
+                            onClick = { vm.setSkin(skinId) },
+                            small = true,
+                            bg = if (active) px.accent else px.surfaceAlt,
+                            fg = if (active) px.accentFg else px.text,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                com.km1quiz.app.ui.pixel.SectionTitle("配色", px)
+                Spacer(Modifier.height(6.dp))
                 com.km1quiz.app.ui.theme.PxStyles.STYLES.forEach { meta ->
                     StyleRow(
                         meta = meta,
@@ -267,17 +290,26 @@ private fun StyleRow(meta: com.km1quiz.app.ui.theme.StyleMeta, current: Boolean,
     }
 }
 
-/** 2x2 四色块小图标（风格切换入口） */
+/** 2x2 四色块小图标（风格切换入口；圆润皮肤画圆点） */
 @Composable
 private fun StyleQuads(modifier: Modifier = Modifier) {
     val px = LocalPx.current
     androidx.compose.foundation.Canvas(modifier) {
         val s = size.width / 3f
         val g = size.width / 6f
-        drawRect(px.accent, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Size(s, s))
-        drawRect(px.ok, androidx.compose.ui.geometry.Offset(s + g, 0f), androidx.compose.ui.geometry.Size(s, s))
-        drawRect(px.bad, androidx.compose.ui.geometry.Offset(0f, s + g), androidx.compose.ui.geometry.Size(s, s))
-        drawRect(px.cyan, androidx.compose.ui.geometry.Offset(s + g, s + g), androidx.compose.ui.geometry.Size(s, s))
+        val positions = listOf(
+            androidx.compose.ui.geometry.Offset(0f, 0f) to px.accent,
+            androidx.compose.ui.geometry.Offset(s + g, 0f) to px.ok,
+            androidx.compose.ui.geometry.Offset(0f, s + g) to px.bad,
+            androidx.compose.ui.geometry.Offset(s + g, s + g) to px.cyan
+        )
+        positions.forEach { (p, c) ->
+            if (px.iconSoft) {
+                drawCircle(c, radius = s / 2f, center = p + androidx.compose.ui.geometry.Offset(s / 2f, s / 2f))
+            } else {
+                drawRect(c, p, androidx.compose.ui.geometry.Size(s, s))
+            }
+        }
     }
 }
 
@@ -297,19 +329,35 @@ private fun ProgressRoad(progress: Float) {
     BoxWithConstraints(Modifier.fillMaxWidth().height(38.dp)) {
         val carW = 32.dp
         val trackW = maxWidth - carW
-        // 路面：交替色块
+        // 路面：像素=交替色块，其余=连续圆角轨
         androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(12.dp).align(Alignment.BottomCenter)) {
-            val block = 10.dp.toPx()
-            var x = 0f
-            var i = 0
-            while (x < size.width) {
-                drawRect(
-                    if (i % 2 == 0) px.border else px.surfaceAlt,
-                    androidx.compose.ui.geometry.Offset(x, 0f),
-                    androidx.compose.ui.geometry.Size(block.coerceAtMost(size.width - x), size.height)
+            if (px.barDiscrete) {
+                val block = 10.dp.toPx()
+                var x = 0f
+                var i = 0
+                while (x < size.width) {
+                    drawRect(
+                        if (i % 2 == 0) px.border else px.surfaceAlt,
+                        androidx.compose.ui.geometry.Offset(x, 0f),
+                        androidx.compose.ui.geometry.Size(block.coerceAtMost(size.width - x), size.height)
+                    )
+                    x += block
+                    i++
+                }
+            } else {
+                val r = androidx.compose.ui.geometry.CornerRadius(size.height / 2f)
+                drawRoundRect(
+                    px.surfaceAlt,
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    size = androidx.compose.ui.geometry.Size(size.width, size.height),
+                    cornerRadius = r
                 )
-                x += block
-                i++
+                drawRoundRect(
+                    px.accent.copy(alpha = 0.35f),
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    size = androidx.compose.ui.geometry.Size(size.width * progress.coerceIn(0f, 1f), size.height),
+                    cornerRadius = r
+                )
             }
         }
         // 像素车：随进度前进 + 颠簸

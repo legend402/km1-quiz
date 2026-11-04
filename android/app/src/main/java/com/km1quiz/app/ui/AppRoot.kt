@@ -117,25 +117,47 @@ fun AppRoot(vm: QuizViewModel) {
     }
 }
 
-/** 棋盘格底纹：16dp 一格，低对比，营造复古像素纸面 */
+/** 背景纹理：像素=棋盘格，毛玻璃=大色块光斑，纸卡=纸纹噪点，其余纯色 */
 private fun Modifier.drawChecker(px: com.km1quiz.app.ui.theme.Px): Modifier = this.then(
     Modifier.drawBehind {
-        val cell = 16.dp.toPx()
-        val alt = px.surface.copy(alpha = if (px == com.km1quiz.app.ui.theme.PxDark) 0.30f else 0.45f)
-        var y = 0f
-        var row = 0
-        while (y < size.height) {
-            var x = 0f
-            var col = 0
-            while (x < size.width) {
-                if ((row + col) % 2 == 0) {
-                    drawRect(alt, Offset(x, y), Size(cell, cell))
+        when (px.skin) {
+            com.km1quiz.app.ui.theme.Skin.PIXEL -> {
+                val cell = 16.dp.toPx()
+                val alt = px.surface.copy(alpha = if (px == com.km1quiz.app.ui.theme.PxDark) 0.30f else 0.45f)
+                var y = 0f
+                var row = 0
+                while (y < size.height) {
+                    var x = 0f
+                    var col = 0
+                    while (x < size.width) {
+                        if ((row + col) % 2 == 0) {
+                            drawRect(alt, Offset(x, y), Size(cell, cell))
+                        }
+                        x += cell
+                        col++
+                    }
+                    y += cell
+                    row++
                 }
-                x += cell
-                col++
             }
-            y += cell
-            row++
+            com.km1quiz.app.ui.theme.Skin.GLASS -> {
+                // 三个大色块光斑，给半透明表面提供色彩层次
+                drawCircle(px.accent.copy(alpha = 0.13f), radius = size.width * 0.55f, center = Offset(size.width * 0.15f, size.height * 0.18f))
+                drawCircle(px.cyan.copy(alpha = 0.11f), radius = size.width * 0.50f, center = Offset(size.width * 0.92f, size.height * 0.52f))
+                drawCircle(px.warn.copy(alpha = 0.08f), radius = size.width * 0.45f, center = Offset(size.width * 0.40f, size.height * 0.95f))
+            }
+            com.km1quiz.app.ui.theme.Skin.PAPER -> {
+                // 纸纹噪点（确定性伪随机，避免每帧闪烁）
+                var seed = 1234567L
+                val rand = { seed = (seed * 6364136223846793005L + 1442695040888963407L); ((seed ushr 33) % 1000) / 1000f }
+                val dot = 2.dp.toPx()
+                repeat(500) {
+                    val x = rand() * size.width
+                    val y = rand() * size.height
+                    drawRect(px.text.copy(alpha = 0.045f), Offset(x, y), Size(dot, dot))
+                }
+            }
+            else -> { /* SOFT / NEU 纯色 */ }
         }
     }
 )

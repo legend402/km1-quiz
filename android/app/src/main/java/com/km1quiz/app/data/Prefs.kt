@@ -30,10 +30,15 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_STYLE, null) ?: "classic"
         set(v) { sp.edit().putString(KEY_STYLE, v).apply() }
 
+    var skinId: String
+        get() = sp.getString(KEY_SKIN, null) ?: "pixel"
+        set(v) { sp.edit().putString(KEY_SKIN, v).apply() }
+
     companion object {
         private const val KEY_STATE = "state"
         private const val KEY_SOUND = "soundEnabled"
         private const val KEY_STYLE = "styleId"
+        private const val KEY_SKIN = "skinId"
     }
 }
 

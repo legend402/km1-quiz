@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         Sfx.enabled = vm.soundEnabled
         setContent {
-            PixelTheme(styleId = vm.styleId) {
+            PixelTheme(styleId = vm.styleId, skinId = vm.skinId) {
                 AppRoot(vm)
             }
         }

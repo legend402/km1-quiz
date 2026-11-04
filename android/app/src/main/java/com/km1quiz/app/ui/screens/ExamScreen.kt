@@ -282,7 +282,7 @@ fun ExamScreen(vm: QuizViewModel, ui: ExamUi) {
     }
 }
 
-/** 倒计时：≤5 分钟脉冲变红 */
+/** 倒计时：≤5 分钟脉冲变红；圆润皮肤为胶囊形 */
 @Composable
 private fun TimerText(remainSec: Int) {
     val px = LocalPx.current
@@ -293,12 +293,23 @@ private fun TimerText(remainSec: Int) {
         animationSpec = infiniteRepeatable(tween(420), RepeatMode.Reverse),
         label = "timerPulse"
     )
+    val shape = if (px.skin == com.km1quiz.app.ui.theme.Skin.PIXEL) {
+        androidx.compose.foundation.shape.RoundedCornerShape(0.dp)
+    } else {
+        androidx.compose.foundation.shape.RoundedCornerShape(999.dp)
+    }
     Box(
         Modifier
             .scale(pulse)
-            .background(if (urgent) px.bad.copy(alpha = 0.16f) else px.surfaceAlt)
-            .border(2.dp, if (urgent) px.bad else px.border)
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .background(if (urgent) px.bad.copy(alpha = 0.16f) else px.surfaceAlt, shape)
+            .then(
+                when (px.skin) {
+                    com.km1quiz.app.ui.theme.Skin.PIXEL -> Modifier.border(2.dp, if (urgent) px.bad else px.border, shape)
+                    com.km1quiz.app.ui.theme.Skin.GLASS -> Modifier.border(1.dp, px.border.copy(alpha = 0.5f), shape)
+                    else -> Modifier
+                }
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Text(
             fmtTime(remainSec),
@@ -318,10 +329,15 @@ private fun SheetLegend(color: Color, label: String, px: com.km1quiz.app.ui.them
     }
 }
 
-/** 答题卡网格：6 列，已答填充、当前描边加粗、点击跳题 */
+/** 答题卡网格：6 列，已答填充、当前描边/圆环、点击跳题 */
 @Composable
 private fun SheetGrid(picked: List<Int>, current: Int, onGoto: (Int) -> Unit) {
     val px = LocalPx.current
+    val cellShape = if (px.skin == com.km1quiz.app.ui.theme.Skin.PIXEL) {
+        androidx.compose.foundation.shape.RoundedCornerShape(0.dp)
+    } else {
+        androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         picked.chunked(6).forEachIndexed { rowIdx, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -332,10 +348,17 @@ private fun SheetGrid(picked: List<Int>, current: Int, onGoto: (Int) -> Unit) {
                     Box(
                         Modifier
                             .size(40.dp)
-                            .background(if (done) px.accent else px.surfaceAlt)
-                            .border(
-                                width = if (isCurrent) 4.dp else 2.dp,
-                                color = if (isCurrent) px.cyan else px.border
+                            .background(if (done) px.accent else px.surfaceAlt, cellShape)
+                            .then(
+                                when {
+                                    px.skin == com.km1quiz.app.ui.theme.Skin.PIXEL -> Modifier.border(
+                                        if (isCurrent) 4.dp else 2.dp,
+                                        if (isCurrent) px.cyan else px.border,
+                                        cellShape
+                                    )
+                                    isCurrent -> Modifier.border(2.dp, px.cyan, cellShape)
+                                    else -> Modifier
+                                }
                             )
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },

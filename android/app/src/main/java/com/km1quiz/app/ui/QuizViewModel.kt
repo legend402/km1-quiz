@@ -93,9 +93,18 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
     var styleId by mutableStateOf("classic")
         private set
 
+    /** 皮肤（PxStyles.SKINS 之一）：像素/圆润/毛玻璃/纸卡/新拟态 */
+    var skinId by mutableStateOf(com.km1quiz.app.ui.theme.PxStyles.SKIN_PIXEL)
+        private set
+
     fun setStyle(id: String) {
         styleId = id
         prefs.styleId = id
+    }
+
+    fun setSkin(id: String) {
+        skinId = id
+        prefs.skinId = id
     }
 
     /** 考试倒计时驱动（每秒更新，UI 据此刷新剩余时间） */
@@ -109,6 +118,7 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
     init {
         soundEnabled = prefs.soundEnabled
         styleId = prefs.styleId
+        skinId = prefs.skinId
         viewModelScope.launch {
             val bank = withContext(Dispatchers.IO) { runCatching { Bank.load(app) }.getOrDefault(emptyList()) }
             val eng = QuizEngine(bank, prefs.loadState())

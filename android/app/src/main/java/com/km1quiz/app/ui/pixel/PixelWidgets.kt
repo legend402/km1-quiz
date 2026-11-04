@@ -23,10 +23,13 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,6 +37,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,23 +50,60 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.km1quiz.app.ui.theme.Px
+import com.km1quiz.app.ui.theme.Skin
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 /**
- * 像素设计系统 v2
- * 原则：默认扁平（边框表达结构），硬阴影仅用于主 CTA/弹窗（elevated），
- * 按压统一"下沉 1dp"的键帽手感，杜绝大面积阴影块。
+ * 像素设计系统 v3 —— 多皮肤组件库
+ * 每个组件根据 px.skin 切换视觉语言：
+ * PIXEL 直角硬边框硬阴影 / SOFT 大圆角柔和投影 / GLASS 半透明细光边 /
+ * PAPER 纸卡细边框 / NEU 同色系双影凸起。
  */
 
-/** 像素卡片：默认扁平；elevated=true 时带 3dp 硬阴影（用于主角元素） */
+// ---------- 皮肤基础形状/颜色 ----------
+
+private fun cardShape(px: Px): Shape = when (px.skin) {
+    Skin.PIXEL -> RoundedCornerShape(0.dp)
+    Skin.GLASS -> RoundedCornerShape(px.corner)
+    Skin.PAPER -> RoundedCornerShape(px.corner)
+    Skin.NEU -> RoundedCornerShape(px.corner)
+    Skin.SOFT -> RoundedCornerShape(px.corner)
+}
+
+private fun btnShape(px: Px): Shape = when (px.skin) {
+    Skin.PIXEL -> RoundedCornerShape(0.dp)
+    Skin.GLASS -> RoundedCornerShape(16.dp)
+    Skin.PAPER -> RoundedCornerShape(10.dp)
+    Skin.NEU -> RoundedCornerShape(14.dp)
+    Skin.SOFT -> RoundedCornerShape(14.dp)
+}
+
+/** 新拟态双影（左上受光、右下投影）：偏移形状 + 模糊，避免硬边方角溢出 */
+private fun Modifier.neuShadow(light: Color, dark: Color, corner: Dp, elevation: Dp = 4.dp): Modifier =
+    this
+        .blur(6.dp)
+        .drawBehind {
+            val r = CornerRadius(corner.toPx())
+            val e = elevation.toPx()
+            drawRoundRect(light, topLeft = Offset(-e, -e), size = size, cornerRadius = r)
+            drawRoundRect(dark, topLeft = Offset(e, e), size = size, cornerRadius = r)
+        }
+
+/** 像素卡片：按皮肤渲染容器 */
 @Composable
 fun PixelCard(
     px: Px,
@@ -72,27 +114,58 @@ fun PixelCard(
     contentPadding: Dp = 14.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val shape = cardShape(px)
     Box(modifier.fillMaxWidth()) {
-        if (elevated) {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .offset(x = 3.dp, y = 3.dp)
-                    .background(px.shadow)
-            )
+        when (px.skin) {
+            Skin.PIXEL -> if (elevated) {
+                Box(Modifier.matchParentSize().offset(x = 3.dp, y = 3.dp).background(px.shadow))
+            }
+            Skin.NEU -> {
+                val darkBg = com.km1quiz.app.ui.theme.PxStyles.isDarkPx(px)
+                val light = Color.White.copy(alpha = if (darkBg) 0.07f else 0.85f)
+                val dark = if (darkBg) Color.Black.copy(alpha = 0.55f) else Color(0xFFB9B5AC)
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .offset(x = (-3).dp, y = (-3).dp)
+                        .neuShadow(light, dark, px.corner, elevation = 5.dp)
+                )
+            }
+            else -> {}
         }
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(bg)
-                .border(borderWidth, px.border)
+                .then(
+                    when (px.skin) {
+                        Skin.PIXEL -> Modifier
+                        // 毛玻璃不用系统阴影：半透明表面下阴影会形成实心衬底
+                        Skin.GLASS -> Modifier
+                        Skin.PAPER -> Modifier.shadow(if (elevated) 5.dp else 2.dp, shape)
+                        Skin.NEU -> Modifier
+                        Skin.SOFT -> Modifier.shadow(if (elevated) 8.dp else 4.dp, shape)
+                    }
+                )
+                .background(if (px.skin == Skin.NEU) px.bg else bg, shape)
+                .then(
+                    when (px.skin) {
+                        Skin.PIXEL -> Modifier.border(borderWidth, px.border, shape)
+                        Skin.PAPER -> Modifier.border(1.dp, px.border, shape)
+                        Skin.GLASS -> Modifier.border(
+                            if (elevated) 2.dp else 1.dp,
+                            px.border.copy(alpha = 0.5f),
+                            shape
+                        )
+                        else -> Modifier
+                    }
+                )
                 .padding(contentPadding),
             content = content
         )
     }
 }
 
-/** 像素按钮：flat=日常（边框+按压下沉 1dp），elevated=主 CTA（3dp 硬影，按下沉入） */
+/** 像素按钮：按皮肤渲染，按压反馈为下沉(像素)或缩放(其余) */
 @Composable
 fun PixelButton(
     px: Px,
@@ -107,17 +180,28 @@ fun PixelButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val depth by animateDpAsState(
+    val shape = btnShape(px)
+    val pressDepth by animateDpAsState(
         targetValue = when {
-            pressed && elevated -> 3.dp
-            pressed -> 1.dp
+            pressed && px.skin == Skin.PIXEL && elevated -> 3.dp
+            pressed && px.skin == Skin.PIXEL -> 1.dp
             else -> 0.dp
         },
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 900f),
         label = "depth"
     )
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed && px.skin != Skin.PIXEL) 0.96f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 900f),
+        label = "pressScale"
+    )
+    val effectiveBg = when {
+        px.skin == Skin.NEU && bg == px.surfaceAlt -> px.bg
+        px.skin == Skin.NEU && bg == px.surface -> px.bg
+        else -> bg
+    }
     Box(modifier) {
-        if (elevated) {
+        if (px.skin == Skin.PIXEL && elevated) {
             Box(
                 Modifier
                     .matchParentSize()
@@ -125,13 +209,41 @@ fun PixelButton(
                     .background(if (enabled) px.shadow else px.border.copy(alpha = 0.3f))
             )
         }
+        if (px.skin == Skin.NEU && !pressed) {
+            val darkBg = com.km1quiz.app.ui.theme.PxStyles.isDarkPx(px)
+            val light = Color.White.copy(alpha = if (darkBg) 0.07f else 0.8f)
+            val dark = if (darkBg) Color.Black.copy(alpha = 0.5f) else Color(0xFFB9B5AC)
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .neuShadow(light, dark, corner = 14.dp, elevation = 4.dp)
+            )
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier
-                .offset(x = depth, y = depth)
-                .background(if (enabled) bg else px.surfaceAlt)
-                .border(2.dp, px.border)
+                .offset(x = pressDepth, y = pressDepth)
+                .scale(pressScale)
+                .then(
+                    when (px.skin) {
+                        Skin.PIXEL -> Modifier
+                        Skin.GLASS -> Modifier
+                        Skin.PAPER -> Modifier.shadow(2.dp, shape)
+                        Skin.NEU -> Modifier
+                        Skin.SOFT -> Modifier.shadow(if (elevated) 5.dp else 2.dp, shape)
+                    }
+                )
+                .background(if (enabled) effectiveBg else px.surfaceAlt, shape)
+                .then(
+                    when (px.skin) {
+                        Skin.PIXEL -> Modifier.border(2.dp, px.border, shape)
+                        Skin.PAPER -> Modifier.border(1.dp, px.border, shape)
+                        Skin.GLASS -> Modifier.border(1.dp, px.border, shape)
+                        Skin.NEU -> if (pressed) Modifier.border(1.dp, Color.Black.copy(alpha = 0.18f), shape) else Modifier
+                        Skin.SOFT -> Modifier
+                    }
+                )
                 .alpha(if (enabled) 1f else 0.55f)
                 .clickable(interactionSource = interaction, indication = null, enabled = enabled) { onClick() },
             content = content
@@ -165,7 +277,7 @@ fun PixelTextButton(
     }
 }
 
-/** 方形图标按钮（上一题/下一题/星标/关闭等） */
+/** 方形图标按钮 */
 @Composable
 fun PixelIconButton(
     glyph: List<String>,
@@ -187,63 +299,88 @@ fun PixelIconButton(
     }
 }
 
-/** 像素小徽章：题型（判断/单选）、图例等 */
+/** 小徽章 chip */
 @Composable
 fun PixelChip(text: String, px: Px, color: Color, modifier: Modifier = Modifier) {
+    val shape = when (px.skin) {
+        Skin.PIXEL -> RoundedCornerShape(0.dp)
+        else -> RoundedCornerShape(999.dp)
+    }
     Box(
         modifier
-            .background(color.copy(alpha = 0.16f))
-            .border(2.dp, color)
-            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .background(color.copy(alpha = if (px.skin == Skin.PIXEL) 0.16f else 0.22f), shape)
+            .then(
+                if (px.skin == Skin.PIXEL) {
+                    Modifier.border(2.dp, color, shape)
+                } else if (px.skin == Skin.GLASS) {
+                    Modifier.border(1.dp, color.copy(alpha = 0.5f), shape)
+                } else {
+                    Modifier
+                }
+            )
+            .padding(horizontal = 10.dp, vertical = if (px.skin == Skin.PIXEL) 2.dp else 3.dp)
     ) {
         Text(text, style = MaterialTheme.typography.labelMedium, color = color)
     }
 }
 
-/** 区块小标题：像素四点 + 文字（增加像素活跃感） */
+/** 区块小标题：像素四点 + 文字 */
 @Composable
 fun SectionTitle(text: String, px: Px, color: Color = px.accent, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        PixelQuads(color, Modifier.size(10.dp, 10.dp))
-        SpacerW(6.dp)
+        PixelQuads(color, Modifier.size(if (px.skin == Skin.PIXEL) 10.dp else 12.dp, if (px.skin == Skin.PIXEL) 10.dp else 12.dp))
+        Spacer(Modifier.width(6.dp))
         Text(text, style = MaterialTheme.typography.labelMedium, color = color)
     }
 }
 
-/** 2x2 像素四点装饰 */
+/** 2x2 四点装饰（圆润皮肤画圆点） */
 @Composable
 fun PixelQuads(color: Color, modifier: Modifier = Modifier) {
+    val soft = com.km1quiz.app.ui.theme.LocalPx.current.iconSoft
     val block = with(androidx.compose.ui.platform.LocalDensity.current) { 2.5.dp.toPx() }
     androidx.compose.foundation.Canvas(modifier) {
-        drawRect(color, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Size(block, block))
-        drawRect(color, androidx.compose.ui.geometry.Offset(block * 2, 0f), androidx.compose.ui.geometry.Size(block, block))
-        drawRect(color, androidx.compose.ui.geometry.Offset(0f, block * 2), androidx.compose.ui.geometry.Size(block, block))
-        drawRect(color, androidx.compose.ui.geometry.Offset(block * 2, block * 2), androidx.compose.ui.geometry.Size(block, block))
-    }
-}
-
-/** 像素虚线分隔线（4dp 方块间隔排布） */
-@Composable
-fun PixelDivider(px: Px, modifier: Modifier = Modifier, color: Color = px.border) {
-    androidx.compose.foundation.Canvas(
-        modifier
-            .fillMaxWidth()
-            .height(4.dp)
-    ) {
-        val block = 4.dp.toPx()
-        var x = 0f
-        while (x < size.width) {
-            drawRect(color, androidx.compose.ui.geometry.Offset(x, 0f), androidx.compose.ui.geometry.Size(block, block))
-            x += block * 2
+        val positions = listOf(
+            Offset(0f, 0f), Offset(block * 2, 0f),
+            Offset(0f, block * 2), Offset(block * 2, block * 2)
+        )
+        positions.forEach { p ->
+            if (soft) {
+                drawCircle(color, radius = block * 0.75f, center = p + Offset(block / 2, block / 2))
+            } else {
+                drawRect(color, p, androidx.compose.ui.geometry.Size(block, block))
+            }
         }
     }
 }
 
-/** 便捷横向空隙 */
+/** 分隔线：像素=方块虚线，其余=细线 */
 @Composable
-fun SpacerW(w: Dp) { androidx.compose.foundation.layout.Spacer(Modifier.width(w)) }
+fun PixelDivider(px: Px, modifier: Modifier = Modifier, color: Color = px.border) {
+    if (px.skin == Skin.PIXEL) {
+        androidx.compose.foundation.Canvas(
+            modifier
+                .fillMaxWidth()
+                .height(4.dp)
+        ) {
+            val block = 4.dp.toPx()
+            var x = 0f
+            while (x < size.width) {
+                drawRect(color, Offset(x, 0f), androidx.compose.ui.geometry.Size(block, block))
+                x += block * 2
+            }
+        }
+    } else {
+        Box(
+            modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(color.copy(alpha = 0.35f), RoundedCornerShape(1.dp))
+        )
+    }
+}
 
-/** 分格块状进度条：填充块弹性逐格弹出 */
+/** 进度条：像素=分格块，其余=连续圆角条 */
 @Composable
 fun PixelBlockBar(
     progress: Float,
@@ -255,25 +392,42 @@ fun PixelBlockBar(
     color: Color = px.accent
 ) {
     val animated by animateFloatAsState(
-        targetValue = progress.coerceIn(0f, 1f) * blocks,
+        targetValue = progress.coerceIn(0f, 1f),
         animationSpec = tween(450, easing = FastOutSlowInEasing),
         label = "barFill"
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = modifier) {
-        repeat(blocks) { i ->
-            val active = i < animated
-            val frac = (animated - i).coerceIn(0f, 1f)
-            val scale by animateFloatAsState(
-                targetValue = if (active) 0.7f + 0.3f * frac else 0.55f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                label = "blk"
+    if (px.barDiscrete) {
+        val blockFill = animated * blocks
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = modifier) {
+            repeat(blocks) { i ->
+                val active = i < blockFill
+                val frac = (blockFill - i).coerceIn(0f, 1f)
+                val scaleB by animateFloatAsState(
+                    targetValue = if (active) 0.7f + 0.3f * frac else 0.55f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                    label = "blk"
+                )
+                Box(
+                    Modifier
+                        .size(blockW, blockH)
+                        .scale(scaleB)
+                        .background(if (active) color else px.surfaceAlt)
+                        .border(1.dp, px.border)
+                )
+            }
+        }
+    } else {
+        BoxWithConstraints(modifier.fillMaxWidth().height(10.dp)) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(px.surfaceAlt, RoundedCornerShape(5.dp))
             )
             Box(
                 Modifier
-                    .size(blockW, blockH)
-                    .scale(scale)
-                    .background(if (active) color else px.surfaceAlt)
-                    .border(1.dp, px.border)
+                    .fillMaxHeight()
+                    .width(maxWidth * animated)
+                    .background(color, RoundedCornerShape(5.dp))
             )
         }
     }
@@ -296,7 +450,7 @@ fun CountUpText(
     Text("$shown$suffix", style = style, color = color)
 }
 
-/** 角标：>0 时持续脉冲 */
+/** 角标：>0 时脉冲 */
 @Composable
 fun PixelBadge(count: Int, px: Px, modifier: Modifier = Modifier) {
     if (count <= 0) { return }
@@ -306,18 +460,19 @@ fun PixelBadge(count: Int, px: Px, modifier: Modifier = Modifier) {
         animationSpec = infiniteRepeatable(tween(480), RepeatMode.Reverse),
         label = "pulse"
     )
+    val shape = if (px.skin == Skin.PIXEL) RoundedCornerShape(0.dp) else RoundedCornerShape(999.dp)
     Box(
         modifier
             .scale(pulse)
-            .background(px.bad)
-            .border(2.dp, px.border)
-            .padding(horizontal = 7.dp, vertical = 1.dp)
+            .background(px.bad, shape)
+            .then(if (px.skin == Skin.PIXEL) Modifier.border(2.dp, px.border, shape) else Modifier)
+            .padding(horizontal = 7.dp, vertical = if (px.skin == Skin.PIXEL) 1.dp else 2.dp)
     ) {
         Text("$count", style = MaterialTheme.typography.labelMedium, color = Color.White)
     }
 }
 
-/** 错误抖动：key 变化时横向 shake */
+/** 错误抖动 */
 @Composable
 fun Modifier.shakeOn(shakeKey: Any): Modifier {
     val anim = remember { Animatable(0f) }
@@ -347,7 +502,7 @@ fun StaggerIn(index: Int, content: @Composable () -> Unit) {
     ) { content() }
 }
 
-/** 像素弹窗：遮罩 + 弹簧缩放卡片 */
+/** 弹窗：遮罩 + 弹簧缩放卡片（卡片皮肤随 PixelCard） */
 @Composable
 fun PixelDialog(
     px: Px,
@@ -376,6 +531,38 @@ fun PixelDialog(
                 Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 10.dp))
                 content()
             }
+        }
+    }
+}
+
+/** 字母键帽：像素=方键帽，圆润=圆形字母底 */
+@Composable
+fun KeycapLetter(
+    label: String,
+    bgColor: Color,
+    textColor: Color,
+    edgeColor: Color,
+    px: Px,
+    size: Dp = 30.dp
+) {
+    if (px.skin == Skin.PIXEL) {
+        Box(
+            Modifier
+                .size(size)
+                .background(bgColor)
+                .border(2.dp, edgeColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = textColor)
+        }
+    } else {
+        Box(
+            Modifier
+                .size(size)
+                .background(bgColor, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = textColor)
         }
     }
 }
